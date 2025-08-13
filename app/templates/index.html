@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>New Estimate Intake</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vk7xjKjB8o+d5QwDFi1Cdm42Hcps225y7sY9qsJh0kGug1L6Nq35p3xNmPR9U1FQ" crossorigin="anonymous">
+  </head>
+  <body>
+    <div class="container py-4">
+      <h1 class="mb-4">New Estimate Intake</h1>
+      <form method="POST" action="/save" class="row g-3">
+        <div class="col-12">
+          <label for="client" class="form-label">Client</label>
+          <input type="text" class="form-control" id="client" name="client" required>
+        </div>
+        <div class="col-12">
+          <label for="site_address" class="form-label">Site Address</label>
+          <input type="text" class="form-control" id="site_address" name="site_address">
+        </div>
+        <div class="col-12">
+          <label for="estimator" class="form-label">Estimator</label>
+          <input type="text" class="form-control" id="estimator" name="estimator">
+        </div>
+        <div class="col-12">
+          <label for="estimate_type" class="form-label">Estimate Type</label>
+          <select class="form-select" id="estimate_type" name="estimate_type">
+            <option value="NSD">NSD</option>
+            <option value="Excel">Excel</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label for="building_type" class="form-label">Building Type</label>
+          <input type="text" class="form-control" id="building_type" name="building_type">
+        </div>
+        <div class="col-12">
+          <label for="building_material" class="form-label">Building Material</label>
+          <input type="text" class="form-control" id="building_material" name="building_material">
+        </div>
+        <div class="col-12">
+          <label for="building_height" class="form-label">Building Height</label>
+          <input type="text" class="form-control" id="building_height" name="building_height">
+        </div>
+        <div class="col-12">
+          <label for="scope_description" class="form-label">Scope Description</label>
+          <textarea class="form-control" id="scope_description" name="scope_description" rows="3"></textarea>
+        </div>
+        <div class="col-12">
+          <label for="exclusions" class="form-label">Exclusions</label>
+          <input type="text" class="form-control" id="exclusions" name="exclusions">
+        </div>
+        <div class="col-12">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+        </div>
+        <div class="col-12">
+          <label for="project_root" class="form-label">Project Root</label>
+          <input type="text" class="form-control" id="project_root" name="project_root">
+        </div>
+        <div class="col-12">
+          <label for="nsd_profile" class="form-label">NSD Profile</label>
+          <input type="text" class="form-control" id="nsd_profile" name="nsd_profile">
+        </div>
+        <div class="col-12">
+          <label for="excel_template" class="form-label">Excel Template</label>
+          <input type="text" class="form-control" id="excel_template" name="excel_template">
+        </div>
+        <input type="hidden" name="segments_json" id="segments_json">
+        <input type="hidden" name="openings_json" id="openings_json">
+
+        <div class="col-6">
+          <label for="segLen" class="form-label">Length (ft)</label>
+          <input type="number" class="form-control" id="segLen">
+        </div>
+        <div class="col-6">
+          <label for="segAng" class="form-label">Angle (deg)</label>
+          <input type="number" class="form-control" id="segAng">
+        </div>
+        <div class="col-12 d-flex gap-2">
+          <button type="button" id="addSeg" class="btn btn-primary">Add Segment</button>
+          <button type="button" id="undoSeg" class="btn btn-secondary">Undo</button>
+          <button type="button" id="closePoly" class="btn btn-danger">Close</button>
+        </div>
+        <div class="col-12">
+          <canvas id="sketch" width="500" height="360" class="border w-100"></canvas>
+        </div>
+        <div class="col-12">
+          Area: <span id="area"></span> ft² | Perimeter: <span id="perimeter"></span> ft
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-success">Save</button>
+        </div>
+      </form>
+    </div>
+    <script src="/static/main.js"></script>
+  </body>
+</html>
