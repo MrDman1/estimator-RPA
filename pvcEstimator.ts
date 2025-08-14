@@ -254,3 +254,196 @@ const trims: TrimChoices = { topTrack:"crownBase", jTrimPackLen:16, cornerTrimPa
 const res = calcEstimate(rooms, openings, trims, { contingencyPct:5 });
 console.log(res);
 */
+// ---------------- Node-only path discovery (no creation, no duplicates) ----------------
+type Maybe<T> = T | null;
+
+export interface PathDiscoveryInput {
+  estimateNumber: string;       // e.g. "25885"
+  wipEstimatingRoot: string;    // e.g. "I:/ACF QUOTES/WIP Estimating"
+  wipDesignRoot: string;        // e.g. "I:/WIP Design"
+  bomNumber?: string;           // e.g. "135079-01"
+}
+
+export interface PathDiscoveryResult {
+  // Estimating side
+  estimateRangeFolder: Maybe<string>;
+  estimateFolder: Maybe<string>;
+  drawings: Maybe<string>;
+  estimateDocs: Maybe<string>;
+  invoicing: Maybe<string>;
+  shipping: Maybe<string>;
+  estimatePdf: Maybe<string>;
+  drawingPdf: Maybe<string>;
+  emailPdf: Maybe<string>;
+
+  // Design/SOF side
+  bomRangeFolder: Maybe<string>;
+  bomFolder: Maybe<string>;         // e.g. .../<BOM>/ (parent of 1-CURRENT)
+  currentFolder: Maybe<string>;     // e.g. .../<BOM>/1-CURRENT/
+  sofFile: Maybe<string>;           // only if currentFolder exists
+}
+
+// Guard: only load fs when running in Node
+function _nodeFs() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require("fs");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const path = require("path");
+    return { fs, path };
+  } catch {
+    throw new Error("resolveExistingPaths() requires Node.js (fs/path not available).");
+  }
+}
+
+function _norm(p: string) { return p.replace(/\\/g, "/"); }
+function _join(...parts: string[]) { const { path } = _nodeFs(); return _norm(path.join(...parts)); }
+
+function _isDir(p: string): boolean {
+  const { fs } = _nodeFs();
+  try { return fs.statSync(p).isDirectory(); } catch { return false; }
+}
+
+function _listDirs(root: string): string[] {
+  const { fs } = _nodeFs();
+  try {
+    return fs.readdirSync(root, { withFileTypes: true })
+             .filter(d => d.isDirectory())
+             .map(d => _join(root, d.name));
+  } catch { return []; }
+}
+
+// Parse names like "2025-25800 to 25899" (year optional), return numeric span if possible
+function _parseRangeFolderName(name: string): { start: number; end: number } | null {
+  // Accept "2025-25800 to 25899", "25800 to 25899", "2025 - 135000 to 135099", etc.
+  const m = name.match(/(\d{4})?[^0-9]*?(\d+)\s*to\s*(\d+)/i) || name.match(/(\d+)\s*-\s*(\d+)/i);
+  if (!m) return null;
+  const start = parseInt(m[2] || m[1], 10);
+  const end   = parseInt(m[3] || m[2], 10);
+  if (Number.isFinite(start) && Number.isFinite(end) && start <= end) return { start, end };
+  return null;
+}
+
+function _chooseBestRangeFolder(candidates: string[], value: number): Maybe<string> {
+  // Prefer the smallest span that includes the value
+  let best: { folder: string; span: number } | null = null;
+  for (const f of candidates) {
+    const name = f.split("/").pop() || f;
+    const r = _parseRangeFolderName(name);
+    if (!r) continue;
+    if (value >= r.start && value <= r.end) {
+      const span = r.end - r.start;
+      if (!best || span < best.span) best = { folder: f, span };
+    }
+  }
+  return best?.folder ?? null;
+}
+
+function _findEstimateRangeFolder(root: string, estNum: number): Maybe<string> {
+  const subdirs = _listDirs(root);
+  const inRange = subdirs.filter(d => {
+    const name = d.split("/").pop() || d;
+    const r = _parseRangeFolderName(name);
+    return r && estNum >= r.start && estNum <= r.end;
+  });
+  if (inRange.length) return _chooseBestRangeFolder(inRange, estNum);
+
+  // Fallback: sometimes range is nested one level down
+  for (const d of subdirs) {
+    const nested = _listDirs(d);
+    const inNested = nested.filter(n => {
+      const name = n.split("/").pop() || n;
+      const r = _parseRangeFolderName(name);
+      return r && estNum >= r.start && estNum <= r.end;
+    });
+    if (inNested.length) return _chooseBestRangeFolder(inNested, estNum);
+  }
+  return null;
+}
+
+function _findChildByExactName(parent: string, name: string): Maybe<string> {
+  const candidates = _listDirs(parent);
+  for (const c of candidates) {
+    if ((c.split("/").pop() || "").toLowerCase() === name.toLowerCase()) return c;
+  }
+  return null;
+}
+
+function _bomBase(bom: string): number {
+  // "135079-01" -> 135079
+  const base = bom.split("-")[0];
+  return parseInt(base, 10);
+}
+
+export function resolveExistingPaths(input: PathDiscoveryInput): PathDiscoveryResult {
+  const estNum = parseInt(input.estimateNumber, 10);
+  if (!Number.isFinite(estNum)) throw new Error("estimateNumber must be numeric.");
+
+  // --- Estimating side
+  let estimateRangeFolder: Maybe<string> = null;
+  let estimateFolder: Maybe<string> = null;
+
+  if (_isDir(input.wipEstimatingRoot)) {
+    estimateRangeFolder = _findEstimateRangeFolder(_norm(input.wipEstimatingRoot), estNum);
+
+    // If we found a range, look for the child folder named exactly the estimate number
+    if (estimateRangeFolder) {
+      estimateFolder = _findChildByExactName(estimateRangeFolder, String(estNum));
+      // If not found, try all range folders for an exact child match (handles misfiled ranges)
+      if (!estimateFolder) {
+        const allRanges = _listDirs(_norm(input.wipEstimatingRoot));
+        for (const r of allRanges) {
+          const child = _findChildByExactName(r, String(estNum));
+          if (child) { estimateFolder = child; break; }
+        }
+      }
+    }
+  }
+
+  const drawings   = estimateFolder ? _join(estimateFolder, "DRAWINGS")  : null;
+  const estimateDocs = estimateFolder ? _join(estimateFolder, "ESTIMATE")  : null;
+  const invoicing  = estimateFolder ? _join(estimateFolder, "INVOICING") : null;
+  const shipping   = estimateFolder ? _join(estimateFolder, "SHIPPING")  : null;
+
+  // Default filenames (only if parent exists)
+  const estimatePdf = estimateDocs ? _join(estimateDocs, `${input.estimateNumber}.pdf`) : null;
+  const drawingPdf  = drawings    ? _join(drawings, `${input.estimateNumber} - Drawing.pdf`) : null;
+  const emailPdf    = invoicing   ? _join(invoicing, `${input.estimateNumber} - Email 1.pdf`) : null;
+
+  // --- Design/SOF side
+  let bomRangeFolder: Maybe<string> = null;
+  let bomFolder: Maybe<string> = null;
+  let currentFolder: Maybe<string> = null;
+  let sofFile: Maybe<string> = null;
+
+  if (input.bomNumber && _isDir(input.wipDesignRoot)) {
+    const base = _bomBase(input.bomNumber);
+    bomRangeFolder = _findEstimateRangeFolder(_norm(input.wipDesignRoot), base);
+
+    if (bomRangeFolder) {
+      bomFolder = _findChildByExactName(bomRangeFolder, input.bomNumber) || null;
+      if (bomFolder) {
+        const cf = _join(bomFolder, "1-CURRENT");
+        currentFolder = _isDir(cf) ? cf : null;
+        if (currentFolder) sofFile = _join(currentFolder, `${input.bomNumber}.sof`);
+      }
+    }
+  }
+
+  return {
+    estimateRangeFolder,
+    estimateFolder,
+    drawings,
+    estimateDocs,
+    invoicing,
+    shipping,
+    estimatePdf,
+    drawingPdf,
+    emailPdf,
+    bomRangeFolder,
+    bomFolder,
+    currentFolder,
+    sofFile
+  };
+}
+
