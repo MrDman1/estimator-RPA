@@ -1,7 +1,7 @@
 from __future__ import annotations
-from typing import Literal
+from typing import Literal, Optional, List, Tuple
 from pydantic import BaseModel, Field
-import orjson, os, pathlib
+import orjson, pathlib
 
 def _dumps(v, *, default):
     return orjson.dumps(v, default=default)
@@ -36,31 +36,31 @@ class Building(OrjsonModel):
     height_ft: float
 
 class Footprint(OrjsonModel):
-    origin: tuple[float, float] = (0.0, 0.0)
-    segments: list[Segment] = Field(default_factory=list)
-    openings: list[Opening] = Field(default_factory=list)
+    origin: Tuple[float, float] = (0.0, 0.0)
+    segments: List[Segment] = Field(default_factory=list)
+    openings: List[Opening] = Field(default_factory=list)
 
 class Scope(OrjsonModel):
     description: str
-    exclusions: list[str] = Field(default_factory=list)
-    notes: str | None = None
+    exclusions: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
 
 class Pricing(OrjsonModel):
-    labor_rate: float | None = None
-    markup_pct: float | None = None
-    tax_pct: float | None = None
+    labor_rate: Optional[float] = None
+    markup_pct: Optional[float] = None
+    tax_pct: Optional[float] = None
 
 class Outputs(OrjsonModel):
     project_root: str
-    nsd_profile: str | None = None
-    excel_template: str | None = None
+    nsd_profile: Optional[str] = None
+    excel_template: Optional[str] = None
 
 class JobBundle(OrjsonModel):
     job: JobInfo
     building: Building
     footprint: Footprint
     scope: Scope
-    pricing: Pricing | None = None
+    pricing: Optional[Pricing] = None
     outputs: Outputs
 
     def to_json(self, path: str) -> str:
@@ -76,12 +76,13 @@ class JobBundle(OrjsonModel):
         return cls.model_validate(data)
 
 if __name__ == "__main__":
+    # Minimal demo bundle to prove the schema works
     demo = JobBundle(
         job=JobInfo(id="J-DEMO", client="Acme", site_address="123 Road", estimator="Damian", estimate_type="NSD"),
         building=Building(type="Warehouse", material="Precast", height_ft=26),
         footprint=Footprint(),
-        scope=Scope(description="Demo", exclusions=["Permits"]),
+        scope=Scope(description="Demo scope", exclusions=["Permits"]),
         outputs=Outputs(project_root="./runs/J-DEMO")
     )
-    out = demo.to_json("./runs/J-DEMO/job.json")
-    print("Wrote", out)
+    out_path = demo.to_json("./runs/J-DEMO/job.json")
+    print("Wrote", out_path)
