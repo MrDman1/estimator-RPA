@@ -1,0 +1,31 @@
+{
+  "job": {
+    "estimateNumber": "",
+    "customer": "",
+    "projectName": "",
+    "savePaths": {
+      "desktopRoot": "C:/Users/<you>/Desktop",
+      "wipEstimatingRoot": "I:/ACF QUOTES/WIP Estimating",
+      "wipDesignRoot": "I:/WIP Design"
+    },
+    "bomNumber": ""
+  },
+  "rooms": [],
+  "openings": [],
+  "trimChoices": {
+    "jTrimPackLen": 16,
+    "cornerTrimPackLen": 16,
+    "topTrack": "crownBase"
+  },
+  "options": {
+    "contingencyPct": 5,
+    "useMetalWallScrews": false
+  },
+  "nsdEstimateBuckets": {
+    "RELINE": 0,
+    "RELINEPRO": 0,
+    "Specialty": 0,
+    "Other": 0,
+    "Shipping": 0
+  }
+}
