@@ -1,0 +1,66 @@
+﻿<Page x:Class="Nuform.App.ResultsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Results">
+    <!-- === Trim controls === -->
+    <StackPanel Margin="10,0,10,10">
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+        <TextBlock Text="Estimate # " VerticalAlignment="Center"/>
+        <TextBox Width="140" Text="{Binding EstimateNumber, UpdateSourceTrigger=PropertyChanged}" />
+      </StackPanel>
+
+      <GroupBox Header="Trim Options">
+        <StackPanel Margin="8">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="Corner type:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox Width="140"
+                      ItemsSource="{Binding CornerTypes}"
+                      SelectedItem="{Binding CornerType, Mode=TwoWay}"
+                      SelectionChanged="TrimOption_Changed"/>
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+            <TextBlock Text="Corner count:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBox Width="80"
+                     PreviewTextInput="CornerCount_PreviewTextInput"
+                     Text="{Binding CornerCount, UpdateSourceTrigger=PropertyChanged}"
+                     TextChanged="TrimOption_Changed"/>
+          </StackPanel>
+
+          <CheckBox Content="Ceiling trim (LF) equals perimeter"
+                    IsChecked="{Binding UseCeilingTrim, Mode=TwoWay}"
+                    Checked="TrimOption_Changed" Unchecked="TrimOption_Changed"/>
+          <CheckBox Content="Use corner trim at openings (+2 per opening)"
+                    IsChecked="{Binding UseOpeningsCorners, Mode=TwoWay}"
+                    Checked="TrimOption_Changed" Unchecked="TrimOption_Changed"/>
+        </StackPanel>
+      </GroupBox>
+    </StackPanel>
+    <!-- === /Trim controls === -->
+    <StackPanel Margin="10">
+        <TextBlock Text="Wall Panels" FontWeight="Bold"/>
+        <ItemsControl x:Name="WallPanelsList"/>
+        <TextBlock Text="Ceiling Panels" FontWeight="Bold" Margin="0,10,0,0"/>
+        <ItemsControl x:Name="CeilingPanelsList"/>
+        <TextBlock Text="Trims &amp; Hardware" FontWeight="Bold" Margin="0,10,0,0"/>
+        <ItemsControl x:Name="TrimPartsList"/>
+        <TextBlock x:Name="HardwareText" Margin="0,5,0,0"/>
+        <StackPanel Margin="0,10,0,0">
+            <TextBlock Text="Trims &amp; Accessories" FontWeight="Bold"/>
+            <TextBlock Text="{Binding JTrimLf, StringFormat=J-Trim LF: {0}}"/>
+            <TextBlock Text="{Binding OutsideCorners, StringFormat=Outside Corners: {0}}"/>
+            <TextBlock Text="{Binding InsideCorners, StringFormat=Inside Corners: {0}}"/>
+            <TextBlock Text="{Binding EndCaps, StringFormat=End Caps: {0}}"/>
+        </StackPanel>
+        <Button Content="Resolve Server Folders" Margin="0,10,0,0" Click="ResolveFolders_Click"/>
+        <TextBlock x:Name="EstimatePathText" Margin="0,5,0,0"/>
+        <TextBlock x:Name="BomPathText" Margin="0,2,0,0"/>
+        <TextBlock x:Name="PdfPathText" Margin="0,2,0,0"/>
+        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+            <Button Content="Generate .SOF" Click="GenerateSof_Click" Margin="0,0,5,0"/>
+            <Button Content="Fill &amp; Print Excel" Click="FillPrint_Click" Margin="0,0,5,0"/>
+            <Button Content="Open Folder" Click="OpenFolder_Click"/>
+        </StackPanel>
+        <Button Content="Back" Click="Back_Click" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+    </StackPanel>
+</Page>

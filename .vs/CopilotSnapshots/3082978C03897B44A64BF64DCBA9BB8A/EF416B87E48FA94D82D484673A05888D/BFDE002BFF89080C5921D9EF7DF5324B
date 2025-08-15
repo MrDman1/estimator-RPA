@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -295,7 +295,7 @@ public static class PathDiscovery
     public static string? FindEstimateFolder(string root, string estimateNumber)
     {
         if (!Directory.Exists(root)) return null;
-        if (!int.TryParse(estimateNumber, out var est)) return null;
+        int est = int.Parse(estimateNumber);
         string? matchRange = null;
         foreach (var dir in Directory.GetDirectories(root))
         {
@@ -322,7 +322,7 @@ public static class PathDiscovery
     public static string? FindBomFolder(string root, string bomNumber)
     {
         if (!Directory.Exists(root)) return null;
-        if (!int.TryParse(bomNumber, out var bom)) return null;
+        int bom = int.Parse(bomNumber);
         string? matchRange = null;
         foreach (var dir in Directory.GetDirectories(root))
         {

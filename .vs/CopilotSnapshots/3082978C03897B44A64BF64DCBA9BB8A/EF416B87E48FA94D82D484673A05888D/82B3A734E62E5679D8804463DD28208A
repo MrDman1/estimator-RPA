@@ -223,40 +223,4 @@ public static class ExcelService
             GC.WaitForPendingFinalizers();
         }
     }
-
-    public static string FillAndPrint(
-        AppConfig cfg, string estimateNumber, EstimateResult result, string outputDir,
-        int? insideCornerOverride, int? outsideCornerOverride, decimal? jTrimLfOverride, decimal? ceilingTrimLfOverride)
-    {
-        var headers = new Dictionary<string, string>
-        {
-            ["EstimateNumber"] = estimateNumber,
-            ["Customer"] = "Customer",
-            ["Project"] = "Project",
-            ["Date"] = DateTime.Now.ToShortDateString()
-        };
-
-        var catalog = CatalogService.Load("RELINE Part List 2025-1-0.pdf");
-        var items = BuildLineItems(result, catalog);
-
-        var calced = CalculateTrims(result.Rooms, result.CeilingPanels.Any());
-        int inside = insideCornerOverride ?? 0;
-        int outside = outsideCornerOverride ?? 0;
-        int jtrim = (int)(jTrimLfOverride ?? calced.JTrimLf);
-        int ceilLf = (int)(ceilingTrimLfOverride ?? 0);
-
-        void AddTrim(string desc, int qty)
-        {
-            if (qty > 0)
-                items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = desc, Qty = qty, UnitPrice = 0m });
-        }
-
-        AddTrim("J-Trim (LF)", jtrim);
-        AddTrim("Ceiling Trim (LF)", ceilLf);
-        AddTrim("Inside Corners", inside);
-        AddTrim("Outside Corners", outside);
-
-        Directory.CreateDirectory(outputDir);
-        return FillAndPrint(cfg.ExcelTemplatePath, outputDir, cfg.PdfPrinter, headers, items, estimateNumber);
-    }
 }
