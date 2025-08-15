@@ -1,9 +1,7 @@
 <Application x:Class="Nuform.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:core="clr-namespace:Nuform.Core;assembly=Nuform.Core"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <core:AppState x:Key="AppState"/>
     </Application.Resources>
 </Application>

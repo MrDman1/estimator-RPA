@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,45 +11,24 @@ namespace Nuform.App;
 
 public partial class ResultsPage : Page
 {
-    private readonly AppState _state;
     private readonly EstimateResult _result;
-
-    public ResultsPage()
+    private readonly string _estimateNumber;
+    public ResultsPage(EstimateResult result, string estimateNumber)
     {
         InitializeComponent();
-        _state = (AppState)Application.Current.FindResource("AppState");
-        RoomsSummary.ItemsSource = _state.Rooms;
-        OpeningsSummary.ItemsSource = _state.Openings;
-
-        var estimator = new Estimator();
-        var input = new EstimateInput
-        {
-            Rooms = _state.Rooms.ToList(),
-            Openings = _state.Openings.ToList(),
-            Options = new EstimateOptions { Contingency = (double)_state.ContingencyPercent / 100.0 }
-        };
-        _result = estimator.Estimate(input);
-        WallPanelsList.ItemsSource = _result.WallPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
-        CeilingPanelsList.ItemsSource = _result.CeilingPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
-        TrimPartsList.ItemsSource = _result.Parts.Select(p => $"{p.PartCode}: {p.QtyPacks} packs ({p.LFNeeded:F1} LF needed, {p.TotalLFProvided:F1} LF provided)");
-        HardwareText.Text = $"Plugs/Spacers: {_result.Hardware.PlugSpacerPacks} packs\nExpansion Tools: {_result.Hardware.ExpansionTools}\nScrews: {_result.Hardware.ScrewBoxes} boxes";
-    }
-
-    private void Back_Click(object sender, RoutedEventArgs e)
-    {
-        var intake = new IntakePage();
-        if (intake.DataContext is IntakeViewModel vm)
-        {
-            _state.ApplyTo(vm);
-        }
-        NavigationService?.Navigate(intake);
+        _result = result;
+        _estimateNumber = estimateNumber;
+        WallPanelsList.ItemsSource = result.WallPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
+        CeilingPanelsList.ItemsSource = result.CeilingPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
+        TrimPartsList.ItemsSource = result.Parts.Select(p => $"{p.PartCode}: {p.QtyPacks} packs ({p.LFNeeded:F1} LF needed, {p.TotalLFProvided:F1} LF provided)");
+        HardwareText.Text = $"Plugs/Spacers: {result.Hardware.PlugSpacerPacks} packs\nExpansion Tools: {result.Hardware.ExpansionTools}\nScrews: {result.Hardware.ScrewBoxes} boxes";
     }
 
     private void ResolveFolders_Click(object sender, RoutedEventArgs e)
     {
         var cfg = ConfigService.Load();
-        var est = PathDiscovery.FindEstimateFolder(cfg.WipEstimatingRoot, _state.EstimateNumber);
-        var bom = PathDiscovery.FindBomFolder(cfg.WipDesignRoot, _state.EstimateNumber);
+        var est = PathDiscovery.FindEstimateFolder(cfg.WipEstimatingRoot, _estimateNumber);
+        var bom = PathDiscovery.FindBomFolder(cfg.WipDesignRoot, _estimateNumber);
         EstimatePathText.Text = est ?? "Estimate folder not found";
         BomPathText.Text = bom ?? "BOM folder not found";
     }
@@ -67,7 +47,7 @@ public partial class ResultsPage : Page
             return;
         }
 
-        var target = Path.Combine(bomCurrent, $"{bomNumber}.sof");
+        var target = System.IO.Path.Combine(bomCurrent, $"{bomNumber}.sof");
         var header = new SofHeader { Date = DateTime.Today, ShipTo = "SoldTo", FreightBy = "Nuform" };
         try
         {
@@ -83,11 +63,11 @@ public partial class ResultsPage : Page
     private void FillPrint_Click(object sender, RoutedEventArgs e)
     {
         var cfg = ConfigService.Load();
-        var est = PathDiscovery.FindEstimateFolder(cfg.WipEstimatingRoot, _state.EstimateNumber);
+        var est = PathDiscovery.FindEstimateFolder(cfg.WipEstimatingRoot, _estimateNumber);
         if (est == null) { MessageBox.Show("Estimate folder not found"); return; }
         try
         {
-            var pdf = ExcelService.FillAndPrint(cfg, _state.EstimateNumber, _result, Path.Combine(est, "ESTIMATE"));
+            var pdf = ExcelService.FillAndPrint(cfg, _estimateNumber, _result, Path.Combine(est, "ESTIMATE"));
             PdfPathText.Text = pdf;
             Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{pdf}\"") { UseShellExecute = true });
         }
