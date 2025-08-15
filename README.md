@@ -14,7 +14,7 @@ Files saved in your existing WIP Estimating and WIP Design folders (no duplicate
 
 Prerequisites
 
-Windows with .NET 8 desktop runtime.
+Windows (no .NET runtime needed; installer ships self-contained).
 
 Network shares mapped and accessible:
 
@@ -26,8 +26,8 @@ Your folders are pre‑created by IT (range folders and child job folders).
 
 (Optional) Excel installed if you want “Fill & Print Excel”.
 
-config.json placed at
-%ProgramData%\Nuform\Estimator\config.json, e.g.:
+Installer writes config at
+%ProgramData%\Nuform\Estimator\config.json (only if missing), e.g.:
 
 {
   "wipEstimatingRoot": "I:/ACF QUOTES/WIP Estimating",
@@ -219,3 +219,22 @@ Generate .SOF (BOM must exist).
 Fill & Print Excel (optional).
 
 Open Folder to verify files.
+
+## Building the installer
+
+Install Inno Setup (adds ISCC.exe to PATH).
+
+Open a Developer PowerShell in `installer\` and run:
+
+```
+./build-installer.ps1 -Version 1.0.0
+```
+
+Result: `installer\Nuform-Estimator-Setup-1.0.0.exe`
+
+### Notes
+
+- The app is self-contained; no .NET runtime needed on target PCs.
+- Installer writes config to `%ProgramData%\Nuform\Estimator\config.json` only if missing (safe for upgrades).
+- Shortcuts: Start Menu plus optional Desktop.
+- The app never creates server folders; it only reads existing ones and writes files when you run actions.
