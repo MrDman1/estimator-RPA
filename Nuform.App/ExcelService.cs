@@ -19,7 +19,7 @@ public static class ExcelService
         ["Date"] = "B5"
     };
 
-    public static string FillAndPrint(AppConfig cfg, string estimateNumber, EstimateResult result, string outputDir)
+    public static string FillAndPrint(AppConfig cfg, string estimateNumber, EstimateResult result, string outputDir, TrimCalculator.TrimResult trims)
     {
         var headers = new Dictionary<string, string>
         {
@@ -30,7 +30,7 @@ public static class ExcelService
         };
 
         var catalog = CatalogService.Load("RELINE Part List 2025-1-0.pdf");
-        var lineItems = BuildLineItems(result, catalog);
+        var lineItems = BuildLineItems(result, catalog, trims);
 
         Directory.CreateDirectory(outputDir);
         return FillAndPrint(cfg.ExcelTemplatePath, outputDir, cfg.PdfPrinter, headers, lineItems, estimateNumber);
@@ -55,7 +55,7 @@ public static class ExcelService
         return "Other";
     }
 
-    static List<ExcelLineItem> BuildLineItems(EstimateResult res, IReadOnlyList<CatalogItem> catalog)
+    static List<ExcelLineItem> BuildLineItems(EstimateResult res, IReadOnlyList<CatalogItem> catalog, TrimCalculator.TrimResult trims)
     {
         var lookup = catalog.ToDictionary(c => c.PartCode, StringComparer.OrdinalIgnoreCase);
         var items = new List<ExcelLineItem>();
@@ -78,6 +78,15 @@ public static class ExcelService
             items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "Expansion Tools", Qty = res.Hardware.ExpansionTools });
         if (res.Hardware.ScrewBoxes > 0)
             items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "Screw Boxes", Qty = res.Hardware.ScrewBoxes });
+
+        if (trims.JTrimLf > 0)
+            items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "J-Trim (LF)", Qty = (int)trims.JTrimLf });
+        if (trims.OutsideCorners > 0)
+            items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "Outside Corners", Qty = trims.OutsideCorners });
+        if (trims.InsideCorners > 0)
+            items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "Inside Corners", Qty = trims.InsideCorners });
+        if (trims.EndCaps > 0)
+            items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "End Caps", Qty = trims.EndCaps });
 
         foreach (var kvp in res.WallPanels)
             items.Add(new ExcelLineItem { Category = "RELINE", Description = $"Wall Panel {kvp.Key}'", Qty = kvp.Value });

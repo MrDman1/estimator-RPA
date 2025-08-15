@@ -12,6 +12,7 @@ public partial class ResultsPage : Page
 {
     private readonly AppState _state;
     private readonly EstimateResult _result;
+    private readonly TrimCalculator.TrimResult _trims;
 
     public ResultsPage()
     {
@@ -32,6 +33,10 @@ public partial class ResultsPage : Page
         CeilingPanelsList.ItemsSource = _result.CeilingPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
         TrimPartsList.ItemsSource = _result.Parts.Select(p => $"{p.PartCode}: {p.QtyPacks} packs ({p.LFNeeded:F1} LF needed, {p.TotalLFProvided:F1} LF provided)");
         HardwareText.Text = $"Plugs/Spacers: {_result.Hardware.PlugSpacerPacks} packs\nExpansion Tools: {_result.Hardware.ExpansionTools}\nScrews: {_result.Hardware.ScrewBoxes} boxes";
+
+        bool useCeil = _state.Rooms.Any(r => r.HasCeiling);
+        _trims = TrimCalculator.Calculate(_state.Rooms, useCeil);
+        TrimsSummary.DataContext = _trims;
     }
 
     private void Back_Click(object sender, RoutedEventArgs e)
@@ -87,7 +92,7 @@ public partial class ResultsPage : Page
         if (est == null) { MessageBox.Show("Estimate folder not found"); return; }
         try
         {
-            var pdf = ExcelService.FillAndPrint(cfg, _state.EstimateNumber, _result, Path.Combine(est, "ESTIMATE"));
+            var pdf = ExcelService.FillAndPrint(cfg, _state.EstimateNumber, _result, Path.Combine(est, "ESTIMATE"), _trims);
             PdfPathText.Text = pdf;
             Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{pdf}\"") { UseShellExecute = true });
         }
