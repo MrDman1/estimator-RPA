@@ -12,6 +12,7 @@ namespace Nuform.Core;
 public class CatalogItem
 {
     public string PartCode { get; init; } = string.Empty;
+    public string PartNumber => PartCode;
     public string Description { get; init; } = string.Empty;
     public double LengthFt { get; init; }
     public int PiecesPerPack { get; init; }
@@ -25,8 +26,13 @@ public class CatalogItem
 /// Loads part information from the RELINE part list PDF and provides
 /// lookups for estimating logic.
 /// </summary>
-public static class CatalogService
+public class CatalogService
 {
+    readonly IReadOnlyList<CatalogItem> _items;
+
+    public CatalogService(string pdfPath = "RELINE Part List 2025-1-0.pdf")
+        => _items = Load(pdfPath);
+
     /// <summary>
     /// Reads the catalog from a PDF file. The parser is intentionally
     /// lightweight – it extracts text from the PDF and searches for lines
@@ -79,4 +85,38 @@ public static class CatalogService
             c.Category.Equals(category, StringComparison.OrdinalIgnoreCase) &&
             Math.Abs(c.LengthFt - lengthFt) < 0.01 &&
             c.Color.Equals(color, StringComparison.OrdinalIgnoreCase));
+
+    public CatalogItem? FindPanel(PanelFamily family, double lengthFt, string color)
+    {
+        var category = family switch
+        {
+            PanelFamily.RelinePro18 => "Panel",
+            _ => "Panel"
+        };
+        return FindItem(_items, category, lengthFt, color);
+    }
+
+    public CatalogItem? FindTrim(TrimKind kind, double lengthFt, string color)
+    {
+        var category = kind switch
+        {
+            TrimKind.J => "J-Trim",
+            TrimKind.Corner90 => "Corner Trim",
+            TrimKind.CrownBaseBase => "Base Trim",
+            TrimKind.CrownBaseCap => "Crown Trim",
+            _ => string.Empty
+        };
+        if (string.IsNullOrEmpty(category)) return null;
+        return FindItem(_items, category, lengthFt, color);
+    }
+
+    public CatalogItem? FindAccessory(string name, string color)
+        => _items.FirstOrDefault(c =>
+            c.Description.Contains(name, StringComparison.OrdinalIgnoreCase) &&
+            (color.Equals("ANY", StringComparison.OrdinalIgnoreCase) ||
+             c.Color.Equals(color, StringComparison.OrdinalIgnoreCase)));
 }
+
+public enum PanelFamily { RelinePro18 }
+
+public enum TrimKind { J, Corner90, CrownBaseBase, CrownBaseCap }
