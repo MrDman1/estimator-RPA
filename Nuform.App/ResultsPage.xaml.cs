@@ -13,11 +13,21 @@ public partial class ResultsPage : Page
 {
     private readonly EstimateResult _result;
     private readonly string _estimateNumber;
+    public decimal JTrimLf { get; private set; }
+    public int OutsideCorners { get; private set; }
+    public int InsideCorners { get; private set; }
+    public int EndCaps { get; private set; }
     public ResultsPage(EstimateResult result, string estimateNumber)
     {
         InitializeComponent();
         _result = result;
         _estimateNumber = estimateNumber;
+        var trims = CalculateTrims(result.Rooms, result.CeilingPanels.Any());
+        JTrimLf = trims.JTrimLf;
+        OutsideCorners = trims.OutsideCorners;
+        InsideCorners = trims.InsideCorners;
+        EndCaps = trims.EndCaps;
+        DataContext = this;
         WallPanelsList.ItemsSource = result.WallPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
         CeilingPanelsList.ItemsSource = result.CeilingPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
         TrimPartsList.ItemsSource = result.Parts.Select(p => $"{p.PartCode}: {p.QtyPacks} packs ({p.LFNeeded:F1} LF needed, {p.TotalLFProvided:F1} LF provided)");
@@ -79,4 +89,32 @@ public partial class ResultsPage : Page
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
         => MessageBox.Show("Open folder not implemented");
+
+    private void Back_Click(object sender, RoutedEventArgs e)
+    {
+        var nav = NavigationService ?? System.Windows.Navigation.NavigationService.GetNavigationService(this);
+        if (nav?.CanGoBack == true) nav.GoBack();
+    }
+
+    private TrimSummary CalculateTrims(IEnumerable<Room> rooms, bool useCeilingPanels)
+    {
+        decimal perimeter = 0;
+        foreach (var r in rooms)
+            perimeter += (decimal)(2 * (r.LengthFt + r.WidthFt));
+        return new TrimSummary
+        {
+            JTrimLf = Math.Ceiling(perimeter),
+            OutsideCorners = useCeilingPanels ? 4 : 0,
+            InsideCorners = 0,
+            EndCaps = 0
+        };
+    }
+
+    private class TrimSummary
+    {
+        public decimal JTrimLf;
+        public int OutsideCorners;
+        public int InsideCorners;
+        public int EndCaps;
+    }
 }

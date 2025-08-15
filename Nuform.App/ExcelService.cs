@@ -55,6 +55,28 @@ public static class ExcelService
         return "Other";
     }
 
+    class TrimSummary
+    {
+        public decimal JTrimLf;
+        public int OutsideCorners;
+        public int InsideCorners;
+        public int EndCaps;
+    }
+
+    static TrimSummary CalculateTrims(IEnumerable<Room> rooms, bool useCeilingPanels)
+    {
+        decimal perimeter = 0;
+        foreach (var r in rooms)
+            perimeter += (decimal)(2 * (r.LengthFt + r.WidthFt));
+        return new TrimSummary
+        {
+            JTrimLf = Math.Ceiling(perimeter),
+            OutsideCorners = useCeilingPanels ? 4 : 0,
+            InsideCorners = 0,
+            EndCaps = 0
+        };
+    }
+
     static List<ExcelLineItem> BuildLineItems(EstimateResult res, IReadOnlyList<CatalogItem> catalog)
     {
         var lookup = catalog.ToDictionary(c => c.PartCode, StringComparer.OrdinalIgnoreCase);
@@ -78,6 +100,17 @@ public static class ExcelService
             items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "Expansion Tools", Qty = res.Hardware.ExpansionTools });
         if (res.Hardware.ScrewBoxes > 0)
             items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "Screw Boxes", Qty = res.Hardware.ScrewBoxes });
+
+        var trims = CalculateTrims(res.Rooms, res.CeilingPanels.Any());
+        void AddTrim(string desc, int qty)
+        {
+            if (qty > 0)
+                items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = desc, Qty = qty, UnitPrice = 0m });
+        }
+        AddTrim("J-Trim (LF)", (int)trims.JTrimLf);
+        AddTrim("Outside Corners", trims.OutsideCorners);
+        AddTrim("Inside Corners", trims.InsideCorners);
+        AddTrim("End Caps", trims.EndCaps);
 
         foreach (var kvp in res.WallPanels)
             items.Add(new ExcelLineItem { Category = "RELINE", Description = $"Wall Panel {kvp.Key}'", Qty = kvp.Value });
