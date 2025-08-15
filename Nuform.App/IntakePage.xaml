@@ -6,12 +6,12 @@
     <StackPanel Margin="10" VerticalAlignment="Stretch">
         <StackPanel Orientation="Horizontal" Margin="0 0 0 10">
             <TextBlock Text="Estimate #" Width="80" VerticalAlignment="Center"/>
-            <TextBox x:Name="EstimateNumberBox" Width="100"/>
+            <TextBox Width="100" Text="{Binding EstimateNumber}"/>
             <TextBlock Text="Cont %" Margin="20 0 0 0" VerticalAlignment="Center"/>
-            <TextBox x:Name="ContBox" Width="50" Text="5"/>
+            <TextBox Width="50" Text="{Binding ContingencyPercent}"/>
         </StackPanel>
         <TextBlock Text="Rooms" FontWeight="Bold"/>
-        <DataGrid x:Name="RoomsGrid" AutoGenerateColumns="False" Height="120" Margin="0 0 0 10">
+        <DataGrid ItemsSource="{Binding Rooms}" AutoGenerateColumns="False" Height="120" Margin="0 0 0 10">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="L" Binding="{Binding LengthFt}" />
                 <DataGridTextColumn Header="W" Binding="{Binding WidthFt}" />
@@ -24,7 +24,7 @@
             </DataGrid.Columns>
         </DataGrid>
         <TextBlock Text="Openings" FontWeight="Bold"/>
-        <DataGrid x:Name="OpeningsGrid" AutoGenerateColumns="False" Height="120" Margin="0 0 0 10">
+        <DataGrid ItemsSource="{Binding Openings}" AutoGenerateColumns="False" Height="120" Margin="0 0 0 10">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Width" Binding="{Binding WidthFt}" />
                 <DataGridTextColumn Header="Height" Binding="{Binding HeightFt}" />
