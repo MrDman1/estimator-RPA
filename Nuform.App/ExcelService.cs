@@ -1,16 +1,16 @@
+﻿using Excel = Microsoft.Office.Interop.Excel;
+using System.Linq;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using Nuform.Core;
-using Excel = Microsoft.Office.Interop.Excel;
 
 namespace Nuform.App;
 
 public static class ExcelService
 {
+    // Map logical header keys -> actual A1 addresses in the template
     static readonly Dictionary<string, string> HeaderCells = new()
     {
         ["EstimateNumber"] = "B2",
@@ -28,8 +28,10 @@ public static class ExcelService
             ["Project"] = "Project",
             ["Date"] = DateTime.Now.ToShortDateString()
         };
+
         var catalog = CatalogService.Load("RELINE Part List 2025-1-0.pdf");
         var lineItems = BuildLineItems(result, catalog);
+
         Directory.CreateDirectory(outputDir);
         return FillAndPrint(cfg.ExcelTemplatePath, outputDir, cfg.PdfPrinter, headers, lineItems, estimateNumber);
     }
@@ -48,8 +50,8 @@ public static class ExcelService
         if (cat.Contains("Shipping", StringComparison.OrdinalIgnoreCase)) return "Shipping";
         if (cat.Contains("RELINEPRO", StringComparison.OrdinalIgnoreCase)) return "RELINEPRO";
         if (cat.Contains("RELINE", StringComparison.OrdinalIgnoreCase)) return "RELINE";
-        if (cat.Contains("Specialty", StringComparison.OrdinalIgnoreCase) || cat.Contains("Accessory", StringComparison.OrdinalIgnoreCase))
-            return "Specialty/Accessories";
+        if (cat.Contains("Specialty", StringComparison.OrdinalIgnoreCase) ||
+            cat.Contains("Accessory", StringComparison.OrdinalIgnoreCase)) return "Specialty/Accessories";
         return "Other";
     }
 
@@ -57,6 +59,7 @@ public static class ExcelService
     {
         var lookup = catalog.ToDictionary(c => c.PartCode, StringComparer.OrdinalIgnoreCase);
         var items = new List<ExcelLineItem>();
+
         foreach (var part in res.Parts)
         {
             if (!lookup.TryGetValue(part.PartCode, out var catItem)) continue;
@@ -68,78 +71,117 @@ public static class ExcelService
                 UnitPrice = catItem.PriceUSD
             });
         }
+
         if (res.Hardware.PlugSpacerPacks > 0)
             items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "Plug/Spacer Packs", Qty = res.Hardware.PlugSpacerPacks });
         if (res.Hardware.ExpansionTools > 0)
             items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "Expansion Tools", Qty = res.Hardware.ExpansionTools });
         if (res.Hardware.ScrewBoxes > 0)
             items.Add(new ExcelLineItem { Category = "Specialty/Accessories", Description = "Screw Boxes", Qty = res.Hardware.ScrewBoxes });
+
         foreach (var kvp in res.WallPanels)
             items.Add(new ExcelLineItem { Category = "RELINE", Description = $"Wall Panel {kvp.Key}'", Qty = kvp.Value });
         foreach (var kvp in res.CeilingPanels)
             items.Add(new ExcelLineItem { Category = "RELINE", Description = $"Ceiling Panel {kvp.Key}'", Qty = kvp.Value });
+
         return items;
     }
 
-    static string FillAndPrint(string templatePath, string outputDir, string printer, Dictionary<string, string> headers, List<ExcelLineItem> items, string estimateNumber)
+    static string FillAndPrint(
+        string templatePath,
+        string outputDir,
+        string printer,
+        Dictionary<string, string> headers,
+        List<ExcelLineItem> items,
+        string estimateNumber)
     {
         Excel.Application? app = null;
         Excel.Workbook? wb = null;
         Excel.Worksheet? ws = null;
+
         try
         {
-            app = new Excel.Application { Visible = false };
+            app = new Excel.Application { Visible = false, DisplayAlerts = false };
             wb = app.Workbooks.Open(templatePath);
             ws = (Excel.Worksheet)wb.ActiveSheet;
+
+            // --- Write headers (use our HeaderCells map for real A1 addresses)
             foreach (var kvp in headers)
             {
-                Excel.Range? rng = null;
-                try { rng = ws.Range[kvp.Key]; }
-                catch { }
-                if (rng == null && HeaderCells.TryGetValue(kvp.Key, out var addr))
-                    rng = ws.Range[addr];
-                if (rng != null)
+                if (!HeaderCells.TryGetValue(kvp.Key, out var addr))
+                    continue; // unknown header key, skip
+
+                var rng = (Excel.Range)ws.Range[addr];
+                try
                 {
-                    rng.Value2 = kvp.Value;
+                    // Write to top-left if merged
+                    bool merged = rng.MergeCells is bool b && b;
+                    if (merged)
+                    {
+                        var topLeft = (Excel.Range)rng.MergeArea.Cells[1, 1];
+                        topLeft.Value2 = kvp.Value;
+                        Marshal.FinalReleaseComObject(topLeft);
+                    }
+                    else
+                    {
+                        rng.Value2 = kvp.Value;
+                    }
+                }
+                finally
+                {
                     Marshal.FinalReleaseComObject(rng);
                 }
             }
 
+            // --- Write line items by category (sheet name = category)
             foreach (var grp in items.GroupBy(i => i.Category))
             {
                 Excel.Worksheet? catSheet = null;
-                try { catSheet = wb.Worksheets[grp.Key]; }
-                catch { }
-                if (catSheet == null) continue;
+                try
+                {
+                    catSheet = (Excel.Worksheet)wb.Worksheets[grp.Key];
+                }
+                catch
+                {
+                    catSheet = null; // sheet not found → skip this category
+                }
+
+                if (catSheet is null) continue;
+
                 int row = 5;
                 foreach (var item in grp)
                 {
-                    catSheet.Cells[row, 1].Value2 = item.Description;
-                    catSheet.Cells[row, 2].Value2 = item.Qty;
-                    catSheet.Cells[row, 3].Value2 = (double)item.UnitPrice;
-                    catSheet.Cells[row, 4].Value2 = (double)item.Extended;
+                    ((Excel.Range)catSheet.Cells[row, 1]).Value2 = item.Description;
+                    ((Excel.Range)catSheet.Cells[row, 2]).Value2 = item.Qty;
+                    ((Excel.Range)catSheet.Cells[row, 3]).Value2 = (double)item.UnitPrice;
+                    ((Excel.Range)catSheet.Cells[row, 4]).Value2 = (double)item.Extended;
                     row++;
                 }
+
                 Marshal.FinalReleaseComObject(catSheet);
             }
 
+            // --- Save copy & export PDF
             var naming = FileNaming.Build(estimateNumber, null, null, null, null);
-            var savePath = Path.Combine(outputDir, estimateNumber + Path.GetExtension(templatePath));
-            wb.SaveAs(savePath);
+            var saveXls = Path.Combine(outputDir, estimateNumber + Path.GetExtension(templatePath));
+            wb.SaveAs(saveXls);
+
             var pdfPath = Path.Combine(outputDir, naming.EstimatePdfName);
             app.ActivePrinter = printer;
             wb.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, pdfPath);
+
             return pdfPath;
         }
         finally
         {
-            if (wb != null)
+            // Close & release COM
+            if (wb is not null)
             {
                 wb.Close(false);
                 Marshal.FinalReleaseComObject(wb);
             }
-            if (ws != null) Marshal.FinalReleaseComObject(ws);
-            if (app != null)
+            if (ws is not null) Marshal.FinalReleaseComObject(ws);
+            if (app is not null)
             {
                 app.Quit();
                 Marshal.FinalReleaseComObject(app);

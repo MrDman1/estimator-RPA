@@ -1,45 +1,62 @@
 # estimator-RPA
+
 Automating Estimation
 
+
+
 Nuform Estimator — How to Use
+
+
+
 Overview
+
+
 
 This Windows app takes your job inputs (rooms, ceilings, openings), does all RELINE/RELINEPRO math, converts trims to full packs, pairs Crown/Base automatically, and outputs:
 
-A valid .SOF file for Component Order (COP).
 
-A filled Excel estimate (from your macro template) and a PDF copy.
 
-Files saved in your existing WIP Estimating and WIP Design folders (no duplicates created).
+* A valid .SOF file for Component Order (COP).
+* A filled Excel estimate (from your macro template) and a PDF copy.
+* Files saved in your existing WIP Estimating and WIP Design folders (no duplicates created).
+
+
 
 Prerequisites
 
-Windows (no .NET runtime needed; installer ships self-contained).
+
+
+Windows with .NET 8 desktop runtime.
 
 Network shares mapped and accessible:
 
-I:\ACF QUOTES\WIP Estimating
+I:\\ACF QUOTES\\WIP Estimating
 
-I:\WIP Design
+I:\\WIP Design
 
 Your folders are pre‑created by IT (range folders and child job folders).
 
-(Optional) Excel installed if you want “Fill & Print Excel”.
+(Optional) Excel installed if you want “Fill \& Print Excel”.
 
-Installer writes config at
-%ProgramData%\Nuform\Estimator\config.json (only if missing), e.g.:
+config.json placed at
+%ProgramData%\\Nuform\\Estimator\\config.json, e.g.:
 
 {
-  "wipEstimatingRoot": "I:/ACF QUOTES/WIP Estimating",
-  "wipDesignRoot": "I:/WIP Design",
-  "pdfPrinter": "Microsoft Print to PDF",
-  "excelTemplatePath": "I:/Shared/Templates/Estimating Template-v.2025.5.23 (64bit).xlsm"
+"wipEstimatingRoot": "I:/ACF QUOTES/WIP Estimating",
+"wipDesignRoot": "I:/WIP Design",
+"pdfPrinter": "Microsoft Print to PDF",
+"excelTemplatePath": "I:/Shared/Templates/Estimating Template-v.2025.5.23 (64bit).xlsm"
 }
+
 
 
 Parts catalog available to the app (CSV or PDF‑backed). Default color is BRIGHT WHITE; add other colors by extending the catalog.
 
+
+
 One‑time setup
+
+
 
 Launch the app (Nuform Estimator).
 
@@ -84,12 +101,12 @@ What the calculator does (so you know what to expect)
 Walls: uses total perimeter LF minus opening widths + header add‑back using
 piecesPerFull = panelLenFt / (headerH + sillH);
 headerPanelsAdded = openingWidth / piecesPerFull;
-headerLFAdded = headerPanelsAdded * panelWidthFt.
+headerLFAdded = headerPanelsAdded \* panelWidthFt.
 Converts LF → panels; adds 5% default contingency; rounds up (≤150 to even 2s, >150 to 5s).
 
 Ceilings:
 
-Widthwise: panels = ceil(L / panelWidthFt * (1+cont)), length = room W.
+Widthwise: panels = ceil(L / panelWidthFt \* (1+cont)), length = room W.
 
 Lengthwise: perRow ceil(W / panelWidthFt) × rows ceil(L / chosenLen).
 
@@ -105,19 +122,19 @@ Calculator works in LF, then converts to full packs using pack LF from the catal
 
 Hardware:
 
-Plugs & Spacers: 1 pack covers 150 panels; then thresholds 200, 250, 300… (n+50 rule).
+Plugs \& Spacers: 1 pack covers 150 panels; then thresholds 200, 250, 300… (n+50 rule).
 
 Expansion tool: 1 up to 250 panels; otherwise 2.
 
 Screws:
 
-Walls: (Σ wallPanels*panelLenFt + totalWallTrimLF) / 2 → boxes of 500.
+Walls: (Σ wallPanels\*panelLenFt + totalWallTrimLF) / 2 → boxes of 500.
 
-Ceilings: (Σ ceilingPanels*panelLenFt + ceilingTrimLF) / 1.5 → boxes of 500.
+Ceilings: (Σ ceilingPanels\*panelLenFt + ceilingTrimLF) / 1.5 → boxes of 500.
 
 Wall screws default Concrete; ceilings Stainless.
 
-Review & outputs (Results page)
+Review \& outputs (Results page)
 
 Quantities
 
@@ -129,9 +146,9 @@ Hardware shows packs/boxes totals.
 
 Resolve Server Folders
 
-Click this to find the correct pre‑created job folders on I:\ (no folders are created).
+Click this to find the correct pre‑created job folders on I:\\ (no folders are created).
 
-You should see the WIP Estimating folder path and, if you have a BOM, the WIP Design ...\<BOM>\1-CURRENT\ path.
+You should see the WIP Estimating folder path and, if you have a BOM, the WIP Design ...<BOM>\\1-CURRENT\\ path.
 
 Generate .SOF
 
@@ -139,13 +156,13 @@ Ensure a BOM exists in NSD (so there’s a 1-CURRENT folder).
 
 Click Generate .SOF.
 
-The app writes a proper SOF with: panels (pcs), J & Corner (packs), Crown/Base as two lines with equal packs, and accessories (packs/boxes).
+The app writes a proper SOF with: panels (pcs), J \& Corner (packs), Crown/Base as two lines with equal packs, and accessories (packs/boxes).
 
 The SOF opens in Component Order.
 
-Fill & Print Excel (optional)
+Fill \& Print Excel (optional)
 
-Click Fill & Print Excel.
+Click Fill \& Print Excel.
 
 The app opens your macro template, writes items into the appropriate NSD buckets (RELINE/RELINEPRO/Specialty/Other/Shipping), saves a copy in the ESTIMATE folder, then prints to PDF into the same folder using your configured PDF printer.
 
@@ -153,18 +170,18 @@ Open Folder
 
 Opens the resolved job folder in Explorer so you can spot the files immediately.
 
-File naming & locations (what lands where)
+File naming \& locations (what lands where)
 
 Estimate PDFs/Excel →
-I:\ACF QUOTES\WIP Estimating\<range>\<Estimate#>\ESTIMATE\
-Filename: <Estimate# [A] [R#] [O#]>.pdf (monikers spaced, e.g., 25885 A R1.pdf)
+I:\\ACF QUOTES\\WIP Estimating<range><Estimate#>\\ESTIMATE  
+Filename: <Estimate# \[A] \[R#] \[O#]>.pdf (monikers spaced, e.g., 25885 A R1.pdf)
 
-Drawings → ...\DRAWINGS\ named "<Estimate# monikers> - Drawing.pdf".
+Drawings → ...\\DRAWINGS\\ named "<Estimate# monikers> - Drawing.pdf".
 
-Invoicing PDFs → ...\INVOICING\ named "<Estimate# monikers> - Email 1.pdf" etc.
+Invoicing PDFs → ...\\INVOICING\\ named "<Estimate# monikers> - Email 1.pdf" etc.
 
 .SOF →
-I:\WIP Design\<range>\<BOM>\1-CURRENT\<BOM>.sof
+I:\\WIP Design<range><BOM>\\1-CURRENT<BOM>.sof
 (If BOM isn’t created yet, create it in NSD first so the folder exists. The app won’t create it for you.)
 
 Changing colors / lengths
@@ -186,7 +203,7 @@ Key categories: Panel, J, Corner90, CrownBaseBase, CrownBaseCap, Cove, Drip, F, 
 Troubleshooting
 
 “.SOF not created: folder does not exist”
-→ Create/select a BOM in NSD so ...\<BOM>\1-CURRENT\ exists, then try again.
+→ Create/select a BOM in NSD so ...<BOM>\\1-CURRENT\\ exists, then try again.
 
 Component Order won’t open the SOF
 
@@ -196,7 +213,7 @@ Panels must have width in column 4 (18 or 12); trims/accessories must have 1 the
 
 No folders found
 
-Confirm I:\ paths in config.json.
+Confirm I:\\ paths in config.json.
 
 Make sure your estimate/BOM folders were pre‑created by IT (the app does not create them).
 
@@ -216,25 +233,7 @@ Resolve Server Folders.
 
 Generate .SOF (BOM must exist).
 
-Fill & Print Excel (optional).
+Fill \& Print Excel (optional).
 
 Open Folder to verify files.
 
-## Building the installer
-
-Install Inno Setup (adds ISCC.exe to PATH).
-
-Open a Developer PowerShell in `installer\` and run:
-
-```
-./build-installer.ps1 -Version 1.0.0
-```
-
-Result: `installer\Nuform-Estimator-Setup-1.0.0.exe`
-
-### Notes
-
-- The app is self-contained; no .NET runtime needed on target PCs.
-- Installer writes config to `%ProgramData%\Nuform\Estimator\config.json` only if missing (safe for upgrades).
-- Shortcuts: Start Menu plus optional Desktop.
-- The app never creates server folders; it only reads existing ones and writes files when you run actions.
