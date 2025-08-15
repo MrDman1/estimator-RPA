@@ -36,20 +36,27 @@ public partial class ResultsPage : Page
     private void GenerateSof_Click(object sender, RoutedEventArgs e)
     {
         var cfg = ConfigService.Load();
+        var catalog = new CatalogService(); // should already load parts.csv or PDF-backed data
+
+        // TODO: replace with the real BOM number the user selected, e.g., from a textbox
+        var bomNumber = "135079-01";
+        var bomCurrent = PathDiscovery.FindBomFolder(cfg.WipDesignRoot, bomNumber);
+        if (string.IsNullOrEmpty(bomCurrent))
+        {
+            MessageBox.Show("BOM 1-CURRENT not found. Create the BOM in NSD, then try again.");
+            return;
+        }
+
+        var target = System.IO.Path.Combine(bomCurrent, $"{bomNumber}.sof");
+        var header = new SofHeader { Date = DateTime.Today, ShipTo = "SoldTo", FreightBy = "Nuform" };
         try
         {
-            var sof = SofGenerator.Generate(cfg, _estimateNumber, _result);
-            if (sof == null)
-            {
-                MessageBox.Show("BOM folder not found");
-                return;
-            }
-            BomPathText.Text = sof;
-            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{sof}\"") { UseShellExecute = true });
+            SofWriter.Write(target, _result, catalog, header, panelColor: "BRIGHT WHITE", panelWidthInches: 18);
+            MessageBox.Show($"SOF created:\n{target}");
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, ".SOF Error");
+            MessageBox.Show($"SOF not created:\n{ex.Message}");
         }
     }
 

@@ -44,11 +44,23 @@ public class EstimateInput
     public EstimateOptions Options { get; set; } = new();
 }
 
+public class TrimResult
+{
+    public int JTrimPacks { get; set; }
+    public int JTrimPackLenFt { get; set; }
+    public int CornerPacks { get; set; }
+    public int CornerPackLenFt { get; set; }
+    public int CrownBasePairs { get; set; }
+    public int TopTrackPackLenFt { get; set; }
+}
+
 public class HardwareResult
 {
     public int PlugSpacerPacks { get; set; }
     public int ExpansionTools { get; set; }
     public int ScrewBoxes { get; set; }
+    public int WallScrewBoxes { get; set; }
+    public int CeilingScrewBoxes { get; set; }
 }
 
 public class PartRequirement
@@ -63,6 +75,7 @@ public class EstimateResult
 {
     public Dictionary<double, int> WallPanels { get; set; } = new();
     public Dictionary<double, int> CeilingPanels { get; set; } = new();
+    public TrimResult Trims { get; set; } = new();
     public HardwareResult Hardware { get; set; } = new();
     public List<PartRequirement> Parts { get; set; } = new();
 }
@@ -119,6 +132,8 @@ public class Estimator
             if (jItem != null)
             {
                 int packs = (int)Math.Ceiling(jtrimLF / jItem.LFPerPack);
+                result.Trims.JTrimPacks = packs;
+                result.Trims.JTrimPackLenFt = (int)lengthChoice;
                 result.Parts.Add(new PartRequirement
                 {
                     PartCode = jItem.PartCode,
@@ -134,6 +149,8 @@ public class Estimator
             if (cItem != null)
             {
                 int packs = (int)Math.Ceiling(cornerLF / cItem.LFPerPack);
+                result.Trims.CornerPacks = packs;
+                result.Trims.CornerPackLenFt = (int)lengthChoice;
                 result.Parts.Add(new PartRequirement
                 {
                     PartCode = cItem.PartCode,
@@ -152,6 +169,8 @@ public class Estimator
                 int basePacks = (int)Math.Ceiling(baseLF / baseItem.LFPerPack);
                 int crownPacks = (int)Math.Ceiling(crownLF / crownItem.LFPerPack);
                 int packs = Math.Max(basePacks, crownPacks);
+                result.Trims.CrownBasePairs = packs;
+                result.Trims.TopTrackPackLenFt = (int)lengthChoice;
                 result.Parts.Add(new PartRequirement
                 {
                     PartCode = baseItem.PartCode,
@@ -221,7 +240,9 @@ public class Estimator
         double ceilingTrimLF = topTrackLF;
         double wallScrews = (wallPanelLenTotal + wallTrimLF) / 2.0;
         double ceilingScrews = (ceilingPanelLenTotal + ceilingTrimLF) / 1.5;
-        result.Hardware.ScrewBoxes = (int)Math.Ceiling((wallScrews + ceilingScrews) / 500.0);
+        result.Hardware.WallScrewBoxes = (int)Math.Ceiling(wallScrews / 500.0);
+        result.Hardware.CeilingScrewBoxes = (int)Math.Ceiling(ceilingScrews / 500.0);
+        result.Hardware.ScrewBoxes = result.Hardware.WallScrewBoxes + result.Hardware.CeilingScrewBoxes;
 
         return result;
     }
