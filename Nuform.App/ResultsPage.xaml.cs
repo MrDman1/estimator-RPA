@@ -20,7 +20,7 @@ public partial class ResultsPage : Page
         _estimateNumber = estimateNumber;
         WallPanelsList.ItemsSource = result.WallPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
         CeilingPanelsList.ItemsSource = result.CeilingPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
-        TrimsText.Text = $"J-Trim: {result.Trims.JTrimLF:F1} LF ({result.Trims.JTrimPacks} packs)\nCorner Trim: {result.Trims.CornerTrimLF:F1} LF ({result.Trims.CornerPacks} packs)\nTop Track: {result.Trims.TopTrackLF:F1} LF";
+        TrimPartsList.ItemsSource = result.Parts.Select(p => $"{p.PartCode}: {p.QtyPacks} packs ({p.LFNeeded:F1} LF needed, {p.TotalLFProvided:F1} LF provided)");
         HardwareText.Text = $"Plugs/Spacers: {result.Hardware.PlugSpacerPacks} packs\nExpansion Tools: {result.Hardware.ExpansionTools}\nScrews: {result.Hardware.ScrewBoxes} boxes";
     }
 

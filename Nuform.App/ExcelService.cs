@@ -38,9 +38,8 @@ public static class ExcelService
             items.Add(($"Wall Panel {kvp.Key}'", kvp.Value));
         foreach (var kvp in res.CeilingPanels)
             items.Add(($"Ceiling Panel {kvp.Key}'", kvp.Value));
-        items.Add(($"J-Trim LF", (int)Math.Round(res.Trims.JTrimLF)));
-        items.Add(($"Corner Trim LF", (int)Math.Round(res.Trims.CornerTrimLF)));
-        items.Add(($"Top Track LF", (int)Math.Round(res.Trims.TopTrackLF)));
+        foreach (var part in res.Parts)
+            items.Add(($"{part.PartCode}", part.QtyPacks));
         items.Add(($"Plug/Spacer Packs", res.Hardware.PlugSpacerPacks));
         items.Add(($"Expansion Tools", res.Hardware.ExpansionTools));
         items.Add(($"Screw Boxes", res.Hardware.ScrewBoxes));

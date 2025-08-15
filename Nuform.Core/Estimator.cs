@@ -33,6 +33,8 @@ public class Opening
 public class EstimateOptions
 {
     public double Contingency { get; set; } = 0.05;
+    public string Color { get; set; } = "Bright White";
+    public string CatalogPdfPath { get; set; } = "RELINE Part List 2025-1-0.pdf";
 }
 
 public class EstimateInput
@@ -42,15 +44,6 @@ public class EstimateInput
     public EstimateOptions Options { get; set; } = new();
 }
 
-public class TrimResult
-{
-    public double JTrimLF { get; set; }
-    public int JTrimPacks { get; set; }
-    public double CornerTrimLF { get; set; }
-    public int CornerPacks { get; set; }
-    public double TopTrackLF { get; set; }
-}
-
 public class HardwareResult
 {
     public int PlugSpacerPacks { get; set; }
@@ -58,12 +51,20 @@ public class HardwareResult
     public int ScrewBoxes { get; set; }
 }
 
+public class PartRequirement
+{
+    public string PartCode { get; set; } = string.Empty;
+    public int QtyPacks { get; set; }
+    public double LFNeeded { get; set; }
+    public double TotalLFProvided { get; set; }
+}
+
 public class EstimateResult
 {
     public Dictionary<double, int> WallPanels { get; set; } = new();
     public Dictionary<double, int> CeilingPanels { get; set; } = new();
-    public TrimResult Trims { get; set; } = new();
     public HardwareResult Hardware { get; set; } = new();
+    public List<PartRequirement> Parts { get; set; } = new();
 }
 
 public class Estimator
@@ -80,6 +81,7 @@ public class Estimator
     public EstimateResult Estimate(EstimateInput input)
     {
         var result = new EstimateResult();
+        var catalog = CatalogService.Load(input.Options.CatalogPdfPath);
         double netLF = 0;
         foreach (var room in input.Rooms)
         {
@@ -98,6 +100,7 @@ public class Estimator
                 netLF += (-op.WidthFt + headerLFAdded) * op.Count;
             }
         }
+        double jtrimLF = 0, cornerLF = 0, baseLF = 0, crownLF = 0, topTrackLF = 0;
         if (input.Rooms.Any())
         {
             double panelWidthFt = PanelWidthFt(input.Rooms.First().PanelWidthInches);
@@ -107,19 +110,63 @@ public class Estimator
             double panelLen = input.Rooms.First().WallPanelLengthFt;
             result.WallPanels[panelLen] = rounded;
 
-            // Trims J-trim around wall perimeter
-            double jtrimLF = netLF * (1 + input.Options.Contingency);
-            result.Trims.JTrimLF = jtrimLF;
-            double perPack = 10 * 12; // assume 12' pieces
-            result.Trims.JTrimPacks = (int)Math.Ceiling(jtrimLF / perPack);
+            double lengthChoice = panelLen <= 12 ? 12 : (panelLen <= 16 ? 16 : 16);
+            string color = input.Options.Color;
+
+            // J-trim around wall perimeter
+            jtrimLF = netLF * (1 + input.Options.Contingency);
+            var jItem = CatalogService.FindItem(catalog, "J-Trim", lengthChoice, color);
+            if (jItem != null)
+            {
+                int packs = (int)Math.Ceiling(jtrimLF / jItem.LFPerPack);
+                result.Parts.Add(new PartRequirement
+                {
+                    PartCode = jItem.PartCode,
+                    QtyPacks = packs,
+                    LFNeeded = jtrimLF,
+                    TotalLFProvided = packs * jItem.LFPerPack
+                });
+            }
 
             // Corner trim: 4 corners per room
-            double cornerLF = input.Rooms.Sum(r => r.HeightFt * 4);
-            result.Trims.CornerTrimLF = cornerLF;
-            double perCornerPack = 5 * 12; // assume 12' pieces
-            int basePacks = (int)Math.Ceiling(cornerLF / perCornerPack);
-            int contPacks = (int)Math.Ceiling(cornerLF * (1 + input.Options.Contingency) / perCornerPack);
-            result.Trims.CornerPacks = contPacks > basePacks ? basePacks : contPacks;
+            cornerLF = input.Rooms.Sum(r => r.HeightFt * 4) * (1 + input.Options.Contingency);
+            var cItem = CatalogService.FindItem(catalog, "Corner Trim", lengthChoice, color);
+            if (cItem != null)
+            {
+                int packs = (int)Math.Ceiling(cornerLF / cItem.LFPerPack);
+                result.Parts.Add(new PartRequirement
+                {
+                    PartCode = cItem.PartCode,
+                    QtyPacks = packs,
+                    LFNeeded = cornerLF,
+                    TotalLFProvided = packs * cItem.LFPerPack
+                });
+            }
+
+            // Crown/Base trims around perimeter
+            baseLF = crownLF = netLF * (1 + input.Options.Contingency);
+            var baseItem = CatalogService.FindItem(catalog, "Base Trim", lengthChoice, color);
+            var crownItem = CatalogService.FindItem(catalog, "Crown Trim", lengthChoice, color);
+            if (baseItem != null && crownItem != null)
+            {
+                int basePacks = (int)Math.Ceiling(baseLF / baseItem.LFPerPack);
+                int crownPacks = (int)Math.Ceiling(crownLF / crownItem.LFPerPack);
+                int packs = Math.Max(basePacks, crownPacks);
+                result.Parts.Add(new PartRequirement
+                {
+                    PartCode = baseItem.PartCode,
+                    QtyPacks = packs,
+                    LFNeeded = baseLF,
+                    TotalLFProvided = packs * baseItem.LFPerPack
+                });
+                result.Parts.Add(new PartRequirement
+                {
+                    PartCode = crownItem.PartCode,
+                    QtyPacks = packs,
+                    LFNeeded = crownLF,
+                    TotalLFProvided = packs * crownItem.LFPerPack
+                });
+            }
         }
 
         // Ceilings
@@ -144,11 +191,24 @@ public class Estimator
             else
                 result.CeilingPanels[panelLen] = qty;
 
-            // Top track
-            result.Trims.TopTrackLF += 2 * (room.LengthFt + room.WidthFt);
+            topTrackLF += 2 * (room.LengthFt + room.WidthFt);
         }
-        if (result.Trims.TopTrackLF > 0)
-            result.Trims.TopTrackLF *= 1.05; // add 5%
+        if (topTrackLF > 0)
+        {
+            topTrackLF *= 1.05; // add 5%
+            var trackItem = CatalogService.FindItem(catalog, "Top Track", 16, input.Options.Color);
+            if (trackItem != null)
+            {
+                int packs = (int)Math.Ceiling(topTrackLF / trackItem.LFPerPack);
+                result.Parts.Add(new PartRequirement
+                {
+                    PartCode = trackItem.PartCode,
+                    QtyPacks = packs,
+                    LFNeeded = topTrackLF,
+                    TotalLFProvided = packs * trackItem.LFPerPack
+                });
+            }
+        }
 
         // Hardware calculations
         int totalPanels = result.WallPanels.Values.Sum() + result.CeilingPanels.Values.Sum();
@@ -157,8 +217,8 @@ public class Estimator
 
         double wallPanelLenTotal = result.WallPanels.Sum(kvp => kvp.Key * kvp.Value);
         double ceilingPanelLenTotal = result.CeilingPanels.Sum(kvp => kvp.Key * kvp.Value);
-        double wallTrimLF = result.Trims.JTrimLF + result.Trims.CornerTrimLF;
-        double ceilingTrimLF = result.Trims.TopTrackLF;
+        double wallTrimLF = jtrimLF + cornerLF + baseLF + crownLF;
+        double ceilingTrimLF = topTrackLF;
         double wallScrews = (wallPanelLenTotal + wallTrimLF) / 2.0;
         double ceilingScrews = (ceilingPanelLenTotal + ceilingTrimLF) / 1.5;
         result.Hardware.ScrewBoxes = (int)Math.Ceiling((wallScrews + ceilingScrews) / 500.0);
