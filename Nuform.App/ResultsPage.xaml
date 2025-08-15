@@ -10,6 +10,13 @@
         <TextBlock Text="Trims &amp; Hardware" FontWeight="Bold" Margin="0,10,0,0"/>
         <ItemsControl x:Name="TrimPartsList"/>
         <TextBlock x:Name="HardwareText" Margin="0,5,0,0"/>
+        <StackPanel Margin="0,10,0,0">
+            <TextBlock Text="Trims &amp; Accessories" FontWeight="Bold"/>
+            <TextBlock Text="{Binding JTrimLf, StringFormat=J-Trim LF: {0}}"/>
+            <TextBlock Text="{Binding OutsideCorners, StringFormat=Outside Corners: {0}}"/>
+            <TextBlock Text="{Binding InsideCorners, StringFormat=Inside Corners: {0}}"/>
+            <TextBlock Text="{Binding EndCaps, StringFormat=End Caps: {0}}"/>
+        </StackPanel>
         <Button Content="Resolve Server Folders" Margin="0,10,0,0" Click="ResolveFolders_Click"/>
         <TextBlock x:Name="EstimatePathText" Margin="0,5,0,0"/>
         <TextBlock x:Name="BomPathText" Margin="0,2,0,0"/>
@@ -19,5 +26,6 @@
             <Button Content="Fill &amp; Print Excel" Click="FillPrint_Click" Margin="0,0,5,0"/>
             <Button Content="Open Folder" Click="OpenFolder_Click"/>
         </StackPanel>
+        <Button Content="Back" Click="Back_Click" HorizontalAlignment="Left" Margin="0,10,0,0"/>
     </StackPanel>
 </Page>

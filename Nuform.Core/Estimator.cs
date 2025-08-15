@@ -78,6 +78,7 @@ public class EstimateResult
     public TrimResult Trims { get; set; } = new();
     public HardwareResult Hardware { get; set; } = new();
     public List<PartRequirement> Parts { get; set; } = new();
+    public List<Room> Rooms { get; set; } = new();
 }
 
 public class Estimator
@@ -94,6 +95,7 @@ public class Estimator
     public EstimateResult Estimate(EstimateInput input)
     {
         var result = new EstimateResult();
+        result.Rooms = input.Rooms;
         var catalog = CatalogService.Load(input.Options.CatalogPdfPath);
         double netLF = 0;
         foreach (var room in input.Rooms)
