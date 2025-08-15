@@ -28,11 +28,30 @@ public partial class ResultsPage : Page
     {
         var cfg = ConfigService.Load();
         var est = PathDiscovery.FindEstimateFolder(cfg.WipEstimatingRoot, _estimateNumber);
+        var bom = PathDiscovery.FindBomFolder(cfg.WipDesignRoot, _estimateNumber);
         EstimatePathText.Text = est ?? "Estimate folder not found";
+        BomPathText.Text = bom ?? "BOM folder not found";
     }
 
     private void GenerateSof_Click(object sender, RoutedEventArgs e)
-        => MessageBox.Show(".SOF generation not implemented");
+    {
+        var cfg = ConfigService.Load();
+        try
+        {
+            var sof = SofGenerator.Generate(cfg, _estimateNumber, _result);
+            if (sof == null)
+            {
+                MessageBox.Show("BOM folder not found");
+                return;
+            }
+            BomPathText.Text = sof;
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{sof}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, ".SOF Error");
+        }
+    }
 
     private void FillPrint_Click(object sender, RoutedEventArgs e)
     {
