@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -32,7 +35,21 @@ public partial class ResultsPage : Page
         => MessageBox.Show(".SOF generation not implemented");
 
     private void FillPrint_Click(object sender, RoutedEventArgs e)
-        => MessageBox.Show("Excel generation not implemented");
+    {
+        var cfg = ConfigService.Load();
+        var est = PathDiscovery.FindEstimateFolder(cfg.WipEstimatingRoot, _estimateNumber);
+        if (est == null) { MessageBox.Show("Estimate folder not found"); return; }
+        try
+        {
+            var pdf = ExcelService.FillAndPrint(cfg, _estimateNumber, _result, Path.Combine(est, "ESTIMATE"));
+            PdfPathText.Text = pdf;
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{pdf}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Excel Error");
+        }
+    }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
         => MessageBox.Show("Open folder not implemented");

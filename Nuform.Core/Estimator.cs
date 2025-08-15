@@ -169,10 +169,10 @@ public class Estimator
 
 public class AppConfig
 {
-    public string WipEstimatingRoot { get; set; } = "I:/ACF QUOTES/WIP Estimating";
-    public string WipDesignRoot { get; set; } = "I:/WIP Design";
+    public string WipEstimatingRoot { get; set; } = "I:/CF QUOTES/WIP Estimating";
+    public string WipDesignRoot { get; set; } = "I:/CF QUOTES/WIP Design";
     public string PdfPrinter { get; set; } = "Microsoft Print to PDF";
-    public string ExcelTemplatePath { get; set; } = string.Empty;
+    public string ExcelTemplatePath { get; set; } = @"C:\Users\dbeland\OneDrive - Nuform Building Technologies Inc\Desktop\Estimating Template-v.2025.5.23 (64bit).xlsm";
 }
 
 public static class ConfigService
