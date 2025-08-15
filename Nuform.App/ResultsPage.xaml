@@ -28,21 +28,6 @@
             <ItemsControl x:Name="WallPanelsList"/>
             <TextBlock Text="Ceiling Panels" FontWeight="Bold" Margin="0,10,0,0"/>
             <ItemsControl x:Name="CeilingPanelsList"/>
-            <TextBlock Text="Trims &amp; Accessories" FontWeight="Bold" Margin="0,10,0,0"/>
-            <StackPanel x:Name="TrimsSummary" Margin="0,2,0,0">
-                <TextBlock Text="J-Trim (LF): " FontWeight="SemiBold">
-                    <Run Text="{Binding JTrimLf, StringFormat=F0}"/>
-                </TextBlock>
-                <TextBlock Text="Outside Corners: " FontWeight="SemiBold">
-                    <Run Text="{Binding OutsideCorners}"/>
-                </TextBlock>
-                <TextBlock Text="Inside Corners: " FontWeight="SemiBold">
-                    <Run Text="{Binding InsideCorners}"/>
-                </TextBlock>
-                <TextBlock Text="End Caps: " FontWeight="SemiBold">
-                    <Run Text="{Binding EndCaps}"/>
-                </TextBlock>
-            </StackPanel>
             <TextBlock Text="Trims &amp; Hardware" FontWeight="Bold" Margin="0,10,0,0"/>
             <ItemsControl x:Name="TrimPartsList"/>
             <TextBlock x:Name="HardwareText" Margin="0,5,0,0"/>
