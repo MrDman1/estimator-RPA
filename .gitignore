@@ -1,3 +1,5 @@
 bin/
 obj/
 *.deps.json
+dist/
+node_modules/
