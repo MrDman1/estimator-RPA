@@ -1,136 +1,93 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
-using Nuform.Core;
+using Nuform.Core.Domain;
 
 namespace Nuform.App;
 
 public partial class ResultsPage : Page, INotifyPropertyChanged
 {
-    private readonly EstimateResult _result;
+    private BuildingInput _input;
+    private CalcEstimateResult _result;
+    private double _perimeter, _wallArea, _openingsArea, _openingsPerimeterLF;
+
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    public enum TrimCornerType { Inside, Outside }
-    public IReadOnlyList<TrimCornerType> CornerTypes { get; } = new[] { TrimCornerType.Inside, TrimCornerType.Outside };
+    public string PerimeterFormula => _input.Mode == "ROOM"
+        ? $"P = 2(L+W) = 2({_input.Length}+{_input.Width}) = {_perimeter}"
+        : $"P = L = {_perimeter}";
 
-    public string EstimateNumber { get; set; } = "";
-    public TrimCornerType CornerType { get; set; } = TrimCornerType.Inside;
-    public int CornerCount { get; set; } = 0;
-    public bool UseOpeningsCorners { get; set; } = false;
-    public bool UseCeilingTrim { get; set; } = false;
+    public string PanelFormula =>
+        $"Base panels = ceil(({_wallArea - _openingsArea}) / ({_input.PanelCoverageWidthFt}\u00D7{_input.Height})) = {_result.Panels.BasePanels}";
 
-    public decimal JTrimLf { get; private set; }
-    public decimal CeilingTrimLf { get; private set; }
-    public int InsideCorners { get; private set; }
-    public int OutsideCorners { get; private set; }
-    public decimal ContingencyPct { get; private set; } = 0.05m;
+    public string OverageFormula =>
+        $"Rounded panels = {_result.Panels.RoundedPanels} (Overage {_result.Panels.OveragePercentRounded:F1}%){(_result.Panels.WarnExceedsConfigured ? " WARN" : "" )}";
 
-    public ResultsPage(EstimateResult result, string estimateNumber)
+    public string JTrimFormula => _input.Trims.JTrimEnabled
+        ? $"J-Trim LF = {(_input.Trims.CeilingTransition != null ? 1 : 3)}\u00D7{_perimeter} + {_openingsPerimeterLF} = {_result.Trims.JTrimLF}"
+        : "J-Trim disabled";
+
+    public string CeilingFormula => _input.Trims.CeilingTransition != null
+        ? $"Ceiling Trim LF = {_result.Trims.CeilingTrimLF}"
+        : "";
+
+    public string InsideCornersFormula => $"Inside Corners = {_result.InsideCorners}";
+
+    public ResultsPage(BuildingInput input, CalcEstimateResult result)
     {
         InitializeComponent();
+        _input = input;
         _result = result;
-        EstimateNumber = string.IsNullOrWhiteSpace(estimateNumber) ? "" : estimateNumber;
-        ContingencyPct = (_result?.Options?.Contingency is double c && c > 0) ? (decimal)c : 0.05m;
         DataContext = this;
-        RecomputeTrims();
-        WallPanelsList.ItemsSource = result.WallPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
-        CeilingPanelsList.ItemsSource = result.CeilingPanels.Select(kvp => $"{kvp.Value} x {kvp.Key}'");
-        TrimPartsList.ItemsSource = result.Parts.Select(p => $"{p.PartCode}: {p.QtyPacks} packs ({p.LFNeeded:F1} LF needed, {p.TotalLFProvided:F1} LF provided)");
-        HardwareText.Text = $"Plugs/Spacers: {result.Hardware.PlugSpacerPacks} packs\nExpansion Tools: {result.Hardware.ExpansionTools}\nScrews: {result.Hardware.ScrewBoxes} boxes";
+
+        LengthBox.Text = _input.Length.ToString();
+        WidthBox.Text = _input.Width.ToString();
+        HeightBox.Text = _input.Height.ToString();
+        ExtraBox.Text = (_input.ExtraPercent ?? CalcSettings.DefaultExtraPercent).ToString();
+
+        Recalculate();
     }
 
-    private void TrimOption_Changed(object? s, RoutedEventArgs e) => RecomputeTrims();
-    private void CornerCount_PreviewTextInput(object s, TextCompositionEventArgs e)
-        => e.Handled = !e.Text.All(char.IsDigit);
-
-    private void RecomputeTrims()
+    private void Recalculate()
     {
-        decimal perim = _result.Rooms?.Sum(r => 2m * ((decimal)r.LengthFt + (decimal)r.WidthFt)) ?? 0m;
-        var jBoth = 2m * perim;
-        JTrimLf = Math.Ceiling(jBoth * (1m + ContingencyPct));
-        CeilingTrimLf = UseCeilingTrim ? Math.Ceiling(perim * (1m + ContingencyPct)) : 0m;
-        int openings = 0; // TODO: replace with actual openings count if available
-        int add = Math.Max(0, CornerCount);
-        if (UseOpeningsCorners) add += 2 * openings;
-        InsideCorners = (CornerType == TrimCornerType.Inside) ? add : 0;
-        OutsideCorners = (CornerType == TrimCornerType.Outside) ? add : 0;
-        OnPropertyChanged(nameof(JTrimLf));
-        OnPropertyChanged(nameof(CeilingTrimLf));
-        OnPropertyChanged(nameof(InsideCorners));
-        OnPropertyChanged(nameof(OutsideCorners));
+        _result = CalcService.CalcEstimate(_input);
+        _perimeter = _input.Mode == "ROOM" ? 2 * (_input.Length + _input.Width) : _input.Length;
+        _wallArea = _perimeter * _input.Height;
+        _openingsArea = 0;
+        _openingsPerimeterLF = 0;
+        foreach (var op in _input.Openings)
+        {
+            var area = op.Width * op.Height * op.Count;
+            if (op.Treatment == OpeningTreatment.BUTT)
+            {
+                _openingsArea += area;
+                _openingsPerimeterLF += 2 * (op.Width + op.Height) * op.Count;
+            }
+        }
+        OnPropertyChanged(nameof(PerimeterFormula));
+        OnPropertyChanged(nameof(PanelFormula));
+        OnPropertyChanged(nameof(OverageFormula));
+        OnPropertyChanged(nameof(JTrimFormula));
+        OnPropertyChanged(nameof(CeilingFormula));
+        OnPropertyChanged(nameof(InsideCornersFormula));
     }
 
-    private void ResolveFolders_Click(object sender, RoutedEventArgs e)
+    private void InputChanged(object sender, TextChangedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(EstimateNumber)) { MessageBox.Show("Enter an estimate number."); return; }
-        if (!int.TryParse(EstimateNumber, out _)) { MessageBox.Show("Estimate # must be numeric."); return; }
-        var cfg = ConfigService.Load();
-        var est = PathDiscovery.FindEstimateFolder(cfg.WipEstimatingRoot, EstimateNumber);
-        var bom = PathDiscovery.FindBomFolder(cfg.WipDesignRoot, EstimateNumber);
-        EstimatePathText.Text = est ?? "Estimate folder not found";
-        BomPathText.Text = bom ?? "BOM folder not found";
+        double.TryParse(LengthBox.Text, out var l);
+        double.TryParse(WidthBox.Text, out var w);
+        double.TryParse(HeightBox.Text, out var h);
+        double.TryParse(ExtraBox.Text, out var extra);
+        _input.Length = l;
+        _input.Width = w;
+        _input.Height = h;
+        _input.ExtraPercent = extra;
+        Recalculate();
     }
-
-    private void GenerateSof_Click(object sender, RoutedEventArgs e)
-    {
-        var cfg = ConfigService.Load();
-        var catalog = new CatalogService();
-        var bomNumber = "135079-01";
-        var bomCurrent = PathDiscovery.FindBomFolder(cfg.WipDesignRoot, bomNumber);
-        if (string.IsNullOrEmpty(bomCurrent))
-        {
-            MessageBox.Show("BOM 1-CURRENT not found. Create the BOM in NSD, then try again.");
-            return;
-        }
-        var target = System.IO.Path.Combine(bomCurrent, $"{bomNumber}.sof");
-        var header = new SofHeader { Date = DateTime.Today, ShipTo = "SoldTo", FreightBy = "Nuform" };
-        try
-        {
-            SofWriter.Write(target, _result, catalog, header, panelColor: "BRIGHT WHITE", panelWidthInches: 18);
-            MessageBox.Show($"SOF created:\n{target}");
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"SOF not created:\n{ex.Message}");
-        }
-    }
-
-    private void FillPrint_Click(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(EstimateNumber)) { MessageBox.Show("Enter an estimate number."); return; }
-        if (!int.TryParse(EstimateNumber, out _)) { MessageBox.Show("Estimate # must be numeric."); return; }
-        var cfg = ConfigService.Load();
-        var est = PathDiscovery.FindEstimateFolder(cfg.WipEstimatingRoot, EstimateNumber);
-        if (est == null) { MessageBox.Show("Estimate folder not found"); return; }
-        try
-        {
-            var pdf = ExcelService.FillAndPrint(cfg, EstimateNumber, _result, System.IO.Path.Combine(est, "ESTIMATE"),
-                                                insideCornerOverride: InsideCorners,
-                                                outsideCornerOverride: OutsideCorners,
-                                                jTrimLfOverride: JTrimLf,
-                                                ceilingTrimLfOverride: CeilingTrimLf);
-            PdfPathText.Text = pdf;
-            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{pdf}\"") { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Excel Error");
-        }
-    }
-
-    private void OpenFolder_Click(object sender, RoutedEventArgs e)
-        => MessageBox.Show("Open folder not implemented");
 
     private void Back_Click(object sender, RoutedEventArgs e)
-    {
-        var nav = NavigationService ?? System.Windows.Navigation.NavigationService.GetNavigationService(this);
-        if (nav?.CanGoBack == true) nav.GoBack();
-    }
+        => NavigationService?.GoBack();
 }
+
