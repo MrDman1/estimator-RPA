@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using Nuform.Core.Domain;
+using Nuform.Core.Services;
 using Nuform.App.Views;
 
 namespace Nuform.App.ViewModels;
@@ -10,6 +11,8 @@ namespace Nuform.App.ViewModels;
 public class ResultsViewModel : INotifyPropertyChanged
 {
     private readonly EstimateState _state;
+    private readonly CatalogService _catalog = new();
+    private bool _catalogError;
 
     private decimal _extrasPercent;
 
@@ -56,6 +59,7 @@ public class ResultsViewModel : INotifyPropertyChanged
     }
 
     public ObservableCollection<BomLineItem> BillOfMaterials { get; } = new();
+    public bool CatalogError => _catalogError;
 
     public ICommand OpenCalculationsCommand { get; }
     public ICommand ExportPdfCommand { get; }
@@ -74,6 +78,12 @@ public class ResultsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(RoundedPanels));
         OnPropertyChanged(nameof(OveragePercentRounded));
         OnPropertyChanged(nameof(ShowOverageWarning));
+
+        var bom = BomService.Build(_state.Input, _state.Result, _catalog, out var missing);
+        BillOfMaterials.Clear();
+        foreach (var item in bom) BillOfMaterials.Add(item);
+        _catalogError = missing;
+        OnPropertyChanged(nameof(CatalogError));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
