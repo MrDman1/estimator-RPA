@@ -1,4 +1,4 @@
-namespace Nuform.App.ViewModels;
+namespace Nuform.Core.Domain;
 
 public class BomLineItem
 {

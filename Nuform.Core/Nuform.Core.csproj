@@ -10,6 +10,13 @@
     <None Include="Data/parts.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="Data/parts.generated.csv" />
+    <None Include="Data/reference/RELINE Part List.pdf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="SofWriter.cs" />
+    <Compile Remove="Estimator.cs" />
   </ItemGroup>
 
 </Project>
