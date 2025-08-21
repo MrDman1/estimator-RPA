@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using Nuform.Core;
 using Nuform.Core.Domain;
+using Nuform.App.Views;
+using Nuform.App.ViewModels;
 
 namespace Nuform.App;
 
@@ -52,7 +54,8 @@ public partial class IntakePage : Page
             }
         };
         var result = CalcService.CalcEstimate(input);
-        NavigationService?.Navigate(new ResultsPage(input, result));
+        var state = new EstimateState(input, result);
+        NavigationService?.Navigate(new ResultsPage(state));
     }
 
     private string? GetSelectedTransition()
