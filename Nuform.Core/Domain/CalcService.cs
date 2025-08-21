@@ -1,0 +1,195 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+
+namespace Nuform.Core.Domain;
+
+public enum OpeningTreatment { WRAPPED, BUTT }
+
+public class OpeningInput
+{
+    public string Type { get; set; } = string.Empty; // garage, man, window, custom
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public int Count { get; set; }
+    public OpeningTreatment Treatment { get; set; } = OpeningTreatment.BUTT;
+}
+
+public class TrimSelections
+{
+    public bool JTrimEnabled { get; set; } = true;
+    // values: "crown-base", "cove", "f-trim" or null
+    public string? CeilingTransition { get; set; }
+}
+
+public class BuildingInput
+{
+    // "ROOM" or "WALL"
+    public string Mode { get; set; } = "ROOM";
+    public double Length { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public List<OpeningInput> Openings { get; set; } = new();
+    // effective panel coverage width in ft
+    public double PanelCoverageWidthFt { get; set; } = 1.0;
+    public double? ExtraPercent { get; set; }
+    public TrimSelections Trims { get; set; } = new();
+}
+
+public class PanelCalcResult
+{
+    public int BasePanels { get; set; }
+    public double ExtraPercentApplied { get; set; }
+    public int RoundedPanels { get; set; }
+    public double OveragePercentRounded { get; set; }
+    public bool WarnExceedsConfigured { get; set; }
+    public bool ManualExtraOverride { get; set; }
+}
+
+public class TrimCalcResult
+{
+    public double JTrimLF { get; set; }
+    public double CeilingTrimLF { get; set; }
+    public string? CeilingTransition { get; set; }
+}
+
+public class CalcEstimateResult
+{
+    public PanelCalcResult Panels { get; set; } = new();
+    public TrimCalcResult Trims { get; set; } = new();
+    public int InsideCorners { get; set; }
+}
+
+public static class CalcSettings
+{
+    public const double DefaultExtraPercent = 5.0;
+    public const double WarnWhenRoundedExceedsPercent = 7.5;
+}
+
+public static class CalcService
+{
+    public static int ComputeInsideCorners(BuildingInput input)
+    {
+        if (input.Mode == "ROOM")
+        {
+            if (input.Length > 1 && input.Width > 1) return 4;
+            if (input.Width == 1) return 0; // single wall
+        }
+        return 0;
+    }
+
+    static int RoundPanels(double qty)
+        => qty <= 150 ? (int)Math.Ceiling(qty / 2.0) * 2 : (int)Math.Ceiling(qty / 5.0) * 5;
+
+    public static CalcEstimateResult CalcEstimate(BuildingInput input)
+    {
+        double perimeter = input.Mode == "ROOM"
+            ? 2 * (input.Length + input.Width)
+            : input.Length;
+
+        double openingsArea = 0;
+        double openingsPerimeterLF = 0;
+        foreach (var op in input.Openings)
+        {
+            double area = op.Width * op.Height * op.Count;
+            if (op.Treatment == OpeningTreatment.BUTT)
+            {
+                openingsArea += area;
+                openingsPerimeterLF += 2 * (op.Width + op.Height) * op.Count;
+            }
+        }
+
+        double wallArea = perimeter * input.Height;
+        double netWallArea = wallArea - openingsArea;
+        int basePanels = (int)Math.Ceiling(netWallArea / (input.PanelCoverageWidthFt * input.Height));
+
+        double extraPercent = input.ExtraPercent ?? CalcSettings.DefaultExtraPercent;
+        double withExtra = basePanels * (1 + extraPercent / 100.0);
+        int roundedPanels = RoundPanels(withExtra);
+        double overagePercentRounded = ((roundedPanels - basePanels) / (double)basePanels) * 100.0;
+        bool warnExceeds = overagePercentRounded > CalcSettings.WarnWhenRoundedExceedsPercent;
+        bool manualOverride = extraPercent != CalcSettings.DefaultExtraPercent;
+
+        double jTrimLF = 0;
+        double ceilingTrimLF = 0;
+        if (input.Trims.JTrimEnabled)
+        {
+            double multiplier = input.Trims.CeilingTransition != null ? 1 : 3;
+            jTrimLF = multiplier * perimeter + openingsPerimeterLF;
+        }
+        if (input.Trims.CeilingTransition != null)
+        {
+            ceilingTrimLF = perimeter;
+        }
+
+        return new CalcEstimateResult
+        {
+            Panels = new PanelCalcResult
+            {
+                BasePanels = basePanels,
+                ExtraPercentApplied = extraPercent,
+                RoundedPanels = roundedPanels,
+                OveragePercentRounded = overagePercentRounded,
+                WarnExceedsConfigured = warnExceeds,
+                ManualExtraOverride = manualOverride
+            },
+            Trims = new TrimCalcResult
+            {
+                JTrimLF = jTrimLF,
+                CeilingTrimLF = ceilingTrimLF,
+                CeilingTransition = input.Trims.CeilingTransition
+            },
+            InsideCorners = ComputeInsideCorners(input)
+        };
+    }
+}
+
+public class PartSpec
+{
+    public string PartNumber { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
+}
+
+public static class PartCatalog
+{
+    private static Dictionary<string, PartSpec>? _parts;
+    static void EnsureLoaded()
+    {
+        if (_parts != null) return;
+        var dict = new Dictionary<string, PartSpec>(StringComparer.OrdinalIgnoreCase);
+        var path = Path.Combine(AppContext.BaseDirectory, "Data", "parts.csv");
+        if (File.Exists(path))
+        {
+            foreach (var line in File.ReadAllLines(path).Skip(1))
+            {
+                var cols = line.Split(',');
+                if (cols.Length >= 3)
+                {
+                    dict[cols[0].Trim()] = new PartSpec
+                    {
+                        PartNumber = cols[0].Trim(),
+                        Name = cols[1].Trim(),
+                        Unit = cols[2].Trim()
+                    };
+                }
+            }
+        }
+        _parts = dict;
+    }
+
+    public static PartSpec? Get(string partNumber)
+    {
+        EnsureLoaded();
+        if (_parts != null && _parts.TryGetValue(partNumber, out var spec)) return spec;
+        return null;
+    }
+
+    public static IEnumerable<PartSpec> All()
+    {
+        EnsureLoaded();
+        return _parts!.Values;
+    }
+}
