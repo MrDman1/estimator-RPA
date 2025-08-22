@@ -1,7 +1,8 @@
-using System.Collections.Generic;
 using System.IO;
-using PdfSharpCore.Drawing;
-using PdfSharpCore.Pdf;
+using System.Collections.Generic;
+using MigraDoc.DocumentObjectModel;
+using MigraDoc.DocumentObjectModel.Tables;
+using MigraDoc.Rendering;
 using Nuform.App.Models;
 
 namespace Nuform.App.Services;
@@ -10,47 +11,61 @@ public static class PdfExportService
 {
     public static void ExportBom(string path, IEnumerable<BomRow> rows, string title)
     {
-        var doc = new PdfDocument();
-        var page = doc.AddPage();
-        var gfx = XGraphics.FromPdfPage(page);
-        var fontH = new XFont("Segoe UI", 16, XFontStyle.Bold);
-        var font = new XFont("Segoe UI", 10, XFontStyle.Regular);
+        var doc = new Document();
+        doc.Info.Title = title;
+        var section = doc.AddSection();
+        section.PageSetup.Orientation = Orientation.Landscape;
+        section.PageSetup.LeftMargin = Unit.FromCentimeter(1.2);
+        section.PageSetup.RightMargin = Unit.FromCentimeter(1.2);
+        section.PageSetup.TopMargin = Unit.FromCentimeter(1.0);
+        section.PageSetup.BottomMargin = Unit.FromCentimeter(1.0);
 
-        double y = 40;
-        gfx.DrawString(title, fontH, XBrushes.Black, new XPoint(40, y)); y += 20;
+        var h = section.AddParagraph(title);
+        h.Format.Font.Size = 14;
+        h.Format.Font.Bold = true;
+        h.Format.SpaceAfter = Unit.FromPoint(12);
 
-        // header
-        y += 10;
-        DrawRow(gfx, ref y, font, true, "Part #", "Name", "Suggested", "Change", "Final", "Unit", "Category");
+        var table = section.AddTable();
+        table.Borders.Width = 0.5;
+
+        table.AddColumn(Unit.FromCentimeter(4.0));
+        table.AddColumn(Unit.FromCentimeter(10.0));
+        table.AddColumn(Unit.FromCentimeter(3.0));
+        table.AddColumn(Unit.FromCentimeter(3.0));
+        table.AddColumn(Unit.FromCentimeter(3.0));
+        table.AddColumn(Unit.FromCentimeter(2.0));
+        table.AddColumn(Unit.FromCentimeter(2.0));
+
+        var header = table.AddRow();
+        header.HeadingFormat = true;
+        header.Format.Alignment = ParagraphAlignment.Left;
+        header.Shading.Color = Colors.LightGray;
+        header.Cells[0].AddParagraph("Part #");
+        header.Cells[1].AddParagraph("Name");
+        header.Cells[2].AddParagraph("Suggested");
+        header.Cells[3].AddParagraph("Change");
+        header.Cells[4].AddParagraph("Final");
+        header.Cells[5].AddParagraph("Unit");
+        header.Cells[6].AddParagraph("Category");
 
         foreach (var r in rows)
         {
-            DrawRow(gfx, ref y, font, false, r.PartNumber, r.Name,
-                    r.SuggestedQty.ToString("N2"), r.Change, r.FinalQty.ToString("N2"), r.Unit, r.Category);
-
-            if (y > page.Height - 40)
-            {
-                page = doc.AddPage(); gfx = XGraphics.FromPdfPage(page); y = 40;
-                DrawRow(gfx, ref y, font, true, "Part #", "Name", "Suggested", "Change", "Final", "Unit", "Category");
-            }
+            var row = table.AddRow();
+            row.Cells[0].AddParagraph(r.PartNumber);
+            var pName = row.Cells[1].AddParagraph(r.Name);
+            pName.Format.Font.Size = 9;
+            row.Cells[2].AddParagraph(r.SuggestedQty.ToString("N2"));
+            row.Cells[3].AddParagraph(string.IsNullOrWhiteSpace(r.Change) ? "0" : r.Change);
+            row.Cells[4].AddParagraph(r.FinalQty.ToString("N2"));
+            row.Cells[5].AddParagraph(r.Unit);
+            row.Cells[6].AddParagraph(r.Category);
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        doc.Save(path);
-    }
+        table.SetEdge(0, 0, 7, table.Rows.Count, Edge.Box, BorderStyle.Single, 0.5, Colors.Gray);
 
-    private static void DrawRow(XGraphics gfx, ref double y, XFont font, bool header,
-        string part, string name, string sugg, string change, string final, string unit, string cat)
-    {
-        var brush = header ? XBrushes.DarkSlateGray : XBrushes.Black;
-        double x = 40;
-        gfx.DrawString(part, font, brush, new XPoint(x, y)); x += 120;
-        gfx.DrawString(name, font, brush, new XPoint(x, y)); x += 250;
-        gfx.DrawString(sugg, font, brush, new XPoint(x, y)); x += 70;
-        gfx.DrawString(change, font, brush, new XPoint(x, y)); x += 60;
-        gfx.DrawString(final, font, brush, new XPoint(x, y)); x += 70;
-        gfx.DrawString(unit, font, brush, new XPoint(x, y)); x += 40;
-        gfx.DrawString(cat, font, brush, new XPoint(x, y));
-        y += 18;
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var renderer = new PdfDocumentRenderer(unicode: true) { Document = doc };
+        renderer.RenderDocument();
+        renderer.PdfDocument.Save(path);
     }
 }

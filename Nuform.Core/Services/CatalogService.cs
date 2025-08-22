@@ -60,4 +60,25 @@ public class CatalogService
                         && p.Description.Contains(((int)widthInches).ToString(), StringComparison.OrdinalIgnoreCase))
             .FirstOrDefault();
     }
+
+    public PartSpec ResolvePanelSku(string series, int widthInches, decimal lengthFt, string color)
+    {
+        var keyColor = color.ToUpperInvariant();
+
+        return FindBySeriesWidthLengthColor(series, widthInches, lengthFt, keyColor)
+               ?? throw new InvalidOperationException($"Panel SKU not found for {series} {widthInches}\" {lengthFt}' {color}");
+    }
+
+    // helper that queries the loaded CSV rows and returns the exact PartSpec
+    private PartSpec? FindBySeriesWidthLengthColor(string series, int widthInches, decimal lengthFt, string color)
+    {
+        return _parts.Values.FirstOrDefault(p =>
+            p.Category.Equals("Panel", StringComparison.OrdinalIgnoreCase) &&
+            p.Description.Contains(series, StringComparison.OrdinalIgnoreCase) &&
+            (p.Description.Contains($"{widthInches}\"", StringComparison.OrdinalIgnoreCase) ||
+             p.Description.Contains(widthInches.ToString(), StringComparison.OrdinalIgnoreCase)) &&
+            Math.Abs((decimal)p.LengthFt - lengthFt) < 0.01m &&
+            p.Color.Equals(color, StringComparison.OrdinalIgnoreCase)
+        );
+    }
 }

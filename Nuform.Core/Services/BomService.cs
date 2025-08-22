@@ -23,16 +23,62 @@ public static class BomService
             });
         }
 
-        // Panels
-        var panel = catalog.FindPanel("NUFORM WHITE", input.PanelCoverageWidthFt * 12, input.Height);
-        if (panel == null)
+        // ----- WALL PANELS -----
+        try
+        {
+            var wallPanelSpec = catalog.ResolvePanelSku(
+                input.WallPanelSeries,
+                input.WallPanelWidthInches,
+                input.WallPanelLengthFt,
+                input.WallPanelColor);
+
+            list.Add(new BomLineItem
+            {
+                PartNumber = wallPanelSpec.PartNumber,
+                Name = wallPanelSpec.Description,
+                Quantity = result.Panels.RoundedPanels,
+                Unit = "pcs",
+                Category = "Panel"
+            });
+        }
+        catch (InvalidOperationException)
         {
             missing = true;
             Console.Error.WriteLine("Missing panel specification");
         }
-        else
+
+        // ----- CEILING PANELS -----
+        if (input.IncludeCeilingPanels)
         {
-            Add(panel, result.Panels.RoundedPanels);
+            decimal panelArea = (input.CeilingPanelWidthInches / 12m) * input.CeilingPanelLengthFt;
+            decimal ceilingArea = (decimal)input.Length * (decimal)input.Width;
+            var baseCeilingPanels = (int)Math.Ceiling(ceilingArea / panelArea);
+            var extraPercent = (decimal)(input.ExtraPercent ?? CalcSettings.DefaultExtraPercent);
+            var withExtra = baseCeilingPanels * (1m + extraPercent / 100m);
+            var roundedCeiling = CalcService.RoundPanels((double)withExtra);
+
+            try
+            {
+                var ceilSpec = catalog.ResolvePanelSku(
+                    input.CeilingPanelSeries,
+                    input.CeilingPanelWidthInches,
+                    input.CeilingPanelLengthFt,
+                    input.CeilingPanelColor);
+
+                list.Add(new BomLineItem
+                {
+                    PartNumber = ceilSpec.PartNumber,
+                    Name = $"{ceilSpec.Description} (CEILING)",
+                    Quantity = roundedCeiling,
+                    Unit = "pcs",
+                    Category = "Panel"
+                });
+            }
+            catch (InvalidOperationException)
+            {
+                missing = true;
+                Console.Error.WriteLine("Missing ceiling panel specification");
+            }
         }
 
         // J Trim

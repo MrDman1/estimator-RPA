@@ -24,19 +24,34 @@ public class TrimSelections
     public string? CeilingTransition { get; set; }
 }
 
-public class BuildingInput
-{
-    // "ROOM" or "WALL"
-    public string Mode { get; set; } = "ROOM";
-    public double Length { get; set; }
-    public double Width { get; set; }
-    public double Height { get; set; }
-    public List<OpeningInput> Openings { get; set; } = new();
-    // effective panel coverage width in ft
-    public double PanelCoverageWidthFt { get; set; } = 1.0;
-    public double? ExtraPercent { get; set; }
-    public TrimSelections Trims { get; set; } = new();
-}
+    public class BuildingInput
+    {
+        // "ROOM" or "WALL"
+        public string Mode { get; set; } = "ROOM";
+        public double Length { get; set; }
+        public double Width { get; set; }
+        public double Height { get; set; }
+        public List<OpeningInput> Openings { get; set; } = new();
+        // effective panel coverage width in ft
+        public double PanelCoverageWidthFt { get; set; } = 1.0;
+        public double? ExtraPercent { get; set; }
+        public TrimSelections Trims { get; set; } = new();
+
+        // New panel selection fields
+        public bool IncludeCeilingPanels { get; set; } = false;
+
+        // Selected wall panel spec
+        public string WallPanelSeries { get; set; } = "R3";       // "R3" | "Mono" | "Pro18"
+        public int WallPanelWidthInches { get; set; } = 12;        // 12 or 18
+        public decimal WallPanelLengthFt { get; set; } = 12m;      // 8.5, 10, 12, 14, 16, 18, 20
+        public string WallPanelColor { get; set; } = "NUFORM WHITE";
+
+        // Selected ceiling panel spec (can differ from wall)
+        public string CeilingPanelSeries { get; set; } = "R3";
+        public int CeilingPanelWidthInches { get; set; } = 12;     // 12 or 18
+        public decimal CeilingPanelLengthFt { get; set; } = 12m;
+        public string CeilingPanelColor { get; set; } = "NUFORM WHITE";
+    }
 
 public class PanelCalcResult
 {
@@ -80,7 +95,7 @@ public static class CalcService
         return 0;
     }
 
-    static int RoundPanels(double qty)
+    public static int RoundPanels(double qty)
         => qty <= 150 ? (int)Math.Ceiling(qty / 2.0) * 2 : (int)Math.Ceiling(qty / 5.0) * 5;
 
     public static CalcEstimateResult CalcEstimate(BuildingInput input)

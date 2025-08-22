@@ -52,7 +52,16 @@ public partial class IntakePage : Page
             {
                 JTrimEnabled = JTrimCheckBox.IsChecked == true,
                 CeilingTransition = GetSelectedTransition()
-            }
+            },
+            IncludeCeilingPanels = room.HasCeiling,
+            WallPanelSeries = "R3",
+            WallPanelWidthInches = (int)room.PanelWidthInches,
+            WallPanelLengthFt = (decimal)room.WallPanelLengthFt,
+            WallPanelColor = "NUFORM WHITE",
+            CeilingPanelSeries = "R3",
+            CeilingPanelWidthInches = (int)room.PanelWidthInches,
+            CeilingPanelLengthFt = (decimal)room.CeilingPanelLengthFt,
+            CeilingPanelColor = "NUFORM WHITE"
         };
         var result = CalcService.CalcEstimate(input);
         var state = new EstimateState(input, result);
