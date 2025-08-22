@@ -1,9 +1,13 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using Nuform.Core.Domain;
 using Nuform.Core.Services;
+using Nuform.App.Models;
+using Nuform.App.Services;
 using Nuform.App.Views;
 
 namespace Nuform.App.ViewModels;
@@ -15,6 +19,7 @@ public class ResultsViewModel : INotifyPropertyChanged
     private bool _catalogError;
 
     private decimal _extrasPercent;
+    private string _extrasPercentText = "5";
 
     public ResultsViewModel(EstimateState state)
     {
@@ -22,6 +27,7 @@ public class ResultsViewModel : INotifyPropertyChanged
 
         _extrasPercent = (decimal?)(state.Input.ExtraPercent) ?? (decimal)CalcSettings.DefaultExtraPercent;
         state.Input.ExtraPercent = (double)_extrasPercent;
+        _extrasPercentText = _extrasPercent.ToString();
 
         OpenCalculationsCommand = new RelayCommand(_ =>
         {
@@ -30,10 +36,23 @@ public class ResultsViewModel : INotifyPropertyChanged
             win.Owner = Application.Current.MainWindow;
             win.Show();
         });
-        ExportPdfCommand = new RelayCommand(_ => { });
+        ExportPdfCommand = new RelayCommand(_ =>
+        {
+            var file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                                    $"estimate_parts_{DateTime.Now:yyyyMMdd_HHmm}.pdf");
+            PdfExportService.ExportBom(file, BillOfMaterials, "Estimate Results");
+            MessageBox.Show($"PDF saved:\n{file}", "Export PDF");
+        });
         ExportCsvCommand = new RelayCommand(_ => { });
-        BackCommand = new RelayCommand(_ => { });
+        BackCommand = new RelayCommand(_ =>
+        {
+            var nav = Application.Current.MainWindow as System.Windows.Navigation.NavigationWindow;
+            if (nav != null && nav.CanGoBack) nav.GoBack();
+            else SystemCommands.MinimizeWindow(Application.Current.MainWindow);
+        });
         FinishCommand = new RelayCommand(_ => { });
+
+        _state.Updated += Recalculate;
 
         Recalculate();
     }
@@ -52,13 +71,30 @@ public class ResultsViewModel : INotifyPropertyChanged
             {
                 _extrasPercent = value;
                 _state.Input.ExtraPercent = (double)value;
+                _extrasPercentText = value.ToString();
                 OnPropertyChanged(nameof(ExtrasPercent));
+                OnPropertyChanged(nameof(ExtrasPercentText));
                 Recalculate();
             }
         }
     }
 
-    public ObservableCollection<BomLineItem> BillOfMaterials { get; } = new();
+    public string ExtrasPercentText
+    {
+        get => _extrasPercentText;
+        set
+        {
+            if (_extrasPercentText == value) return;
+            _extrasPercentText = value;
+            if (decimal.TryParse(value, out var v))
+            {
+                ExtrasPercent = v;
+            }
+            OnPropertyChanged(nameof(ExtrasPercentText));
+        }
+    }
+
+    public ObservableCollection<BomRow> BillOfMaterials { get; } = new();
     public bool CatalogError => _catalogError;
 
     public ICommand OpenCalculationsCommand { get; }
@@ -81,7 +117,19 @@ public class ResultsViewModel : INotifyPropertyChanged
 
         var bom = BomService.Build(_state.Input, _state.Result, _catalog, out var missing);
         BillOfMaterials.Clear();
-        foreach (var item in bom) BillOfMaterials.Add(item);
+        foreach (var item in bom)
+        {
+            BillOfMaterials.Add(new BomRow
+            {
+                PartNumber = item.PartNumber,
+                Name = item.Name,
+                SuggestedQty = item.Quantity,
+                Unit = item.Unit,
+                Category = item.Category,
+                Change = "0"
+            });
+        }
+        OnPropertyChanged(nameof(BillOfMaterials));
         _catalogError = missing;
         OnPropertyChanged(nameof(CatalogError));
     }

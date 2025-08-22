@@ -51,7 +51,7 @@
           <StackPanel>
             <TextBlock Text="Extras (%)" FontWeight="SemiBold"/>
             <DockPanel>
-              <TextBox Width="60" Text="{Binding ExtrasPercent, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Width="60" Text="{Binding ExtrasPercentText, UpdateSourceTrigger=PropertyChanged}" />
               <TextBlock Margin="6,0,0,0" Text="%" VerticalAlignment="Center"/>
             </DockPanel>
           </StackPanel>
@@ -73,13 +73,14 @@
       </Grid>
 
       <!-- BOM Table -->
-      <DataGrid ItemsSource="{Binding BillOfMaterials}"
-                AutoGenerateColumns="False" IsReadOnly="True" Margin="0,12,0,0">
+      <DataGrid ItemsSource="{Binding BillOfMaterials}" AutoGenerateColumns="False" IsReadOnly="False" Margin="0,12,0,0">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Part #" Binding="{Binding PartNumber}" Width="*" />
-          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" />
-          <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="Auto" />
-          <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="Auto" />
+          <DataGridTextColumn Header="Part #" Binding="{Binding PartNumber}" IsReadOnly="True" Width="*" />
+          <DataGridTextColumn Header="Name"   Binding="{Binding Name}"       IsReadOnly="True" Width="2*" />
+          <DataGridTextColumn Header="Suggested" Binding="{Binding SuggestedQty, StringFormat={}{0:N2}}" IsReadOnly="True" Width="Auto" />
+          <DataGridTextColumn Header="Change" Binding="{Binding Change, UpdateSourceTrigger=PropertyChanged}" Width="Auto" />
+          <DataGridTextColumn Header="Final"  Binding="{Binding FinalQty, StringFormat={}{0:N2}}" IsReadOnly="True" Width="Auto" />
+          <DataGridTextColumn Header="Unit"   Binding="{Binding Unit}" Width="Auto" />
           <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="Auto" />
         </DataGrid.Columns>
       </DataGrid>
