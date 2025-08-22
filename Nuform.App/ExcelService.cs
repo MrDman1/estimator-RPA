@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using Nuform.Core;
+using Nuform.Core.LegacyCompat;
 
 namespace Nuform.App;
 
