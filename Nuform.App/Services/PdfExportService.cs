@@ -1,73 +1,199 @@
-using System.IO;
+// Nuform.App/Services/PdfExportService.cs
+using System;
 using System.Collections.Generic;
-using MigraDoc.DocumentObjectModel;
-using MigraDoc.DocumentObjectModel.Tables;
-using MigraDoc.Rendering;
+using System.IO;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
 using Nuform.App.Models;
 
 namespace Nuform.App.Services
 {
     public static class PdfExportService
     {
+        // Landscape, auto-fit columns, wraps long names, paginates with repeating header.
         public static void ExportBom(string path, IEnumerable<BomRow> rows, string title)
         {
-            var doc = new Document();
-            doc.Info.Title = title;
+            var doc = new PdfDocument();
 
-            var section = doc.AddSection();
-            section.PageSetup.Orientation = Orientation.Landscape;
-            section.PageSetup.LeftMargin  = Unit.FromCentimeter(1.2);
-            section.PageSetup.RightMargin = Unit.FromCentimeter(1.2);
-            section.PageSetup.TopMargin   = Unit.FromCentimeter(1.0);
-            section.PageSetup.BottomMargin= Unit.FromCentimeter(1.0);
+            // layout constants
+            const double margin = 36; // 0.5"
+            var fontTitle = new XFont("Segoe UI", 14, XFontStyle.Bold);
+            var fontHeader = new XFont("Segoe UI", 9, XFontStyle.Bold);
+            var fontCell = new XFont("Segoe UI", 9, XFontStyle.Regular);
 
-            var h = section.AddParagraph(title);
-            h.Format.Font.Size = 14;
-            h.Format.Font.Bold = true;
-            h.Format.SpaceAfter = Unit.FromPoint(12);
+            // desired column widths; they’ll be scaled to fit
+            double[] col = { 120, 360, 70, 60, 70, 45, 80 }; // Part#, Name, Suggested, Change, Final, Unit, Category
 
-            var table = section.AddTable();
-            table.Borders.Width = 0.5;
+            // locals that change per page
+            PdfPage page = NewPage(doc);
+            using var gfx = XGraphics.FromPdfPage(page);
+            var ctx = CreatePageContext(page, margin);
 
-            // Columns (sum ≈ 27 cm to fit landscape A4/Letter)
-            table.AddColumn(Unit.FromCentimeter(4.0));  // Part #
-            table.AddColumn(Unit.FromCentimeter(10.0)); // Name
-            table.AddColumn(Unit.FromCentimeter(3.0));  // Suggested
-            table.AddColumn(Unit.FromCentimeter(3.0));  // Change
-            table.AddColumn(Unit.FromCentimeter(3.0));  // Final
-            table.AddColumn(Unit.FromCentimeter(2.0));  // Unit
-            table.AddColumn(Unit.FromCentimeter(2.0));  // Category
+            ScaleToFit(col, ctx.ContentWidth);
 
-            var header = table.AddRow();
-            header.HeadingFormat = true;
-            header.Shading.Color = Colors.LightGray;
-            header.Cells[0].AddParagraph("Part #");
-            header.Cells[1].AddParagraph("Name");
-            header.Cells[2].AddParagraph("Suggested");
-            header.Cells[3].AddParagraph("Change");
-            header.Cells[4].AddParagraph("Final");
-            header.Cells[5].AddParagraph("Unit");
-            header.Cells[6].AddParagraph("Category");
+            double y = ctx.Top;
+
+            // draw title + header on first page
+            DrawTitle(gfx, fontTitle, title, ctx.Left, ref y);
+            DrawHeader(gfx, fontHeader, ctx, col, ref y);
 
             foreach (var r in rows)
             {
-                var row = table.AddRow();
-                row.Cells[0].AddParagraph(r.PartNumber ?? "");
-                var pName = row.Cells[1].AddParagraph(r.Name ?? "");
-                pName.Format.Font.Size = 9;
-                row.Cells[2].AddParagraph(r.SuggestedQty.ToString("N2"));
-                row.Cells[3].AddParagraph(string.IsNullOrWhiteSpace(r.Change) ? "0" : r.Change);
-                row.Cells[4].AddParagraph(r.FinalQty.ToString("N2"));
-                row.Cells[5].AddParagraph(r.Unit ?? "");
-                row.Cells[6].AddParagraph(r.Category ?? "");
+                var cells = new[]
+                {
+                    r.PartNumber ?? "",
+                    r.Name ?? "",
+                    r.SuggestedQty.ToString("N2"),
+                    string.IsNullOrWhiteSpace(r.Change) ? "0" : r.Change,
+                    r.FinalQty.ToString("N2"),
+                    r.Unit ?? "",
+                    r.Category ?? ""
+                };
+
+                // compute row height (word wrap on each column)
+                double lineH = fontCell.GetHeight(gfx) + 2;
+                int maxLines = 1;
+                for (int i = 0; i < col.Length; i++)
+                    maxLines = Math.Max(maxLines, WrapCount(gfx, fontCell, cells[i], col[i]));
+                double rowH = maxLines * lineH + 6; // padding
+
+                // new page if needed
+                if (y + rowH > ctx.Bottom)
+                {
+                    page = NewPage(doc);
+                    gfx.Dispose(); // dispose old page graphics
+                    using var _ = new object(); // keep using-scopes valid (no-op)
+                    var gfx2 = XGraphics.FromPdfPage(page);
+
+                    // reset ctx / y and reassign gfx reference
+                    var newCtx = CreatePageContext(page, margin);
+                    double y2 = newCtx.Top;
+                    DrawTitle(gfx2, fontTitle, title, newCtx.Left, ref y2);
+                    DrawHeader(gfx2, fontHeader, newCtx, col, ref y2);
+
+                    // swap locals
+                    typeof(XGraphics).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(gfx, true); // ensure not used again
+                    // rebind everything to the new graphics/page
+                    DrawRow(gfx2, fontCell, newCtx, col, cells, ref y2);
+                    // update outer refs
+                    page = page; // no-op, clarity
+                    y = y2;
+                    ctx = newCtx;
+                    continue;
+                }
+
+                DrawRow(gfx, fontCell, ctx, col, cells, ref y);
             }
 
-            table.SetEdge(0, 0, 7, table.Rows.Count, Edge.Box, BorderStyle.Single, 0.5, Colors.Gray);
-
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var renderer = new PdfDocumentRenderer(unicode: true) { Document = doc };
-            renderer.RenderDocument();
-            renderer.PdfDocument.Save(path);
+            doc.Save(path);
+        }
+
+        // ===== helpers =====
+
+        private struct PageContext
+        {
+            public double Left, Top, Right, Bottom, ContentWidth;
+        }
+
+        private static PageContext CreatePageContext(PdfPage page, double margin)
+        {
+            var left = margin;
+            var right = page.Width - margin;
+            var top = margin;
+            var bottom = page.Height - margin;
+            return new PageContext
+            {
+                Left = left,
+                Right = right,
+                Top = top,
+                Bottom = bottom,
+                ContentWidth = right - left
+            };
+        }
+
+        private static PdfPage NewPage(PdfDocument doc)
+        {
+            var p = doc.AddPage();
+            p.Orientation = PdfSharpCore.PageOrientation.Landscape;
+            return p;
+        }
+
+        private static void DrawTitle(XGraphics gfx, XFont font, string title, double x, ref double y)
+        {
+            gfx.DrawString(title, font, XBrushes.Black, new XPoint(x, y));
+            y += 24;
+        }
+
+        private static void DrawHeader(XGraphics gfx, XFont font, PageContext ctx, double[] col, ref double y)
+        {
+            string[] headers = { "Part #", "Name", "Suggested", "Change", "Final", "Unit", "Category" };
+            double rowH = font.GetHeight(gfx) + 10;
+            gfx.DrawRectangle(XBrushes.LightGray, ctx.Left, y - 2, ctx.ContentWidth, rowH);
+            double x = ctx.Left;
+            for (int i = 0; i < col.Length; i++)
+            {
+                gfx.DrawString(headers[i], font, XBrushes.Black, new XPoint(x + 2, y + 2));
+                x += col[i];
+            }
+            gfx.DrawLine(XPens.LightGray, ctx.Left, y + rowH, ctx.Right, y + rowH);
+            y += rowH;
+        }
+
+        private static void DrawRow(XGraphics gfx, XFont font, PageContext ctx, double[] col, string[] cells, ref double y)
+        {
+            double lineH = font.GetHeight(gfx) + 2;
+            int maxLines = 1;
+            for (int i = 0; i < col.Length; i++)
+                maxLines = Math.Max(maxLines, WrapCount(gfx, font, cells[i], col[i]));
+            double rowH = maxLines * lineH + 6;
+
+            double x = ctx.Left;
+            for (int i = 0; i < col.Length; i++)
+            {
+                DrawWrapped(gfx, font, cells[i], x + 2, y + 3, col[i] - 4, lineH);
+                x += col[i];
+            }
+            gfx.DrawLine(XPens.LightGray, ctx.Left, y + rowH, ctx.Right, y + rowH);
+            y += rowH;
+        }
+
+        private static void ScaleToFit(double[] widths, double available)
+        {
+            double total = 0; foreach (var w in widths) total += w;
+            if (total <= available) return;
+            double scale = available / total;
+            for (int i = 0; i < widths.Length; i++) widths[i] *= scale;
+        }
+
+        private static int WrapCount(XGraphics gfx, XFont font, string text, double maxWidth)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return 1;
+            var words = text.Split(' ');
+            int lines = 1; string current = "";
+            foreach (var w in words)
+            {
+                var candidate = current.Length == 0 ? w : current + " " + w;
+                var sz = gfx.MeasureString(candidate, font);
+                if (sz.Width <= maxWidth) current = candidate;
+                else { lines++; current = w; }
+            }
+            return Math.Max(1, lines);
+        }
+
+        private static void DrawWrapped(XGraphics gfx, XFont font, string text, double x, double y, double maxWidth, double lineH)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+            var words = text.Split(' ');
+            string line = ""; double yy = y;
+            foreach (var w in words)
+            {
+                var candidate = line.Length == 0 ? w : line + " " + w;
+                var sz = gfx.MeasureString(candidate, font);
+                if (sz.Width <= maxWidth) line = candidate;
+                else { gfx.DrawString(line, font, XBrushes.Black, new XPoint(x, yy)); yy += lineH; line = w; }
+            }
+            if (line.Length > 0) gfx.DrawString(line, font, XBrushes.Black, new XPoint(x, yy));
         }
     }
 }
