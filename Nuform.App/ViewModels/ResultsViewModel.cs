@@ -46,24 +46,27 @@ public class ResultsViewModel : INotifyPropertyChanged
         ExportCsvCommand = new RelayCommand(_ => { });
         BackCommand = new RelayCommand(_ =>
         {
-            var main = Application.Current.MainWindow;
-            // Try NavigationWindow first
-            if (main is System.Windows.Navigation.NavigationWindow nav && nav.CanGoBack)
-            {
-                nav.GoBack();
-                return;
-            }
-
-            // If app uses a Frame named "MainFrame" in MainWindow, navigate it.
-            var frame = (main as Nuform.App.MainWindow)?.MainFrame;
+            // Try WPF NavigationService (Frame)
+            var mainWindow = System.Windows.Application.Current.MainWindow as Nuform.App.MainWindow;
+            var frame = mainWindow?.MainFrame;
             if (frame != null)
             {
-                frame.Navigate(new Nuform.App.Views.IntakePage());
+                // If there is history, go back; otherwise navigate to Intake explicitly
+                if (frame.CanGoBack) frame.GoBack();
+                else frame.Navigate(new Nuform.App.Views.IntakePage());
                 return;
             }
 
-            // Fallback: open IntakePage in the main window content.
-            main.Content = new Nuform.App.Views.IntakePage();
+            // If app uses a NavigationWindow
+            if (System.Windows.Application.Current.MainWindow is System.Windows.Navigation.NavigationWindow nav)
+            {
+                if (nav.CanGoBack) nav.GoBack();
+                else nav.Navigate(new Nuform.App.Views.IntakePage());
+                return;
+            }
+
+            // Fallback: set window content directly
+            System.Windows.Application.Current.MainWindow.Content = new Nuform.App.Views.IntakePage();
         });
         FinishCommand = new RelayCommand(_ => { });
 
