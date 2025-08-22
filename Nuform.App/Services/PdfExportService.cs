@@ -17,23 +17,22 @@ namespace Nuform.App.Services
 
             // layout constants
             const double margin = 36; // 0.5"
-            var fontTitle = new XFont("Segoe UI", 14, XFontStyle.Bold);
-            var fontHeader = new XFont("Segoe UI", 9, XFontStyle.Bold);
-            var fontCell = new XFont("Segoe UI", 9, XFontStyle.Regular);
+            var fontTitle  = new XFont("Segoe UI", 14, XFontStyle.Bold);
+            var fontHeader = new XFont("Segoe UI", 9,  XFontStyle.Bold);
+            var fontCell   = new XFont("Segoe UI", 9,  XFontStyle.Regular);
 
             // desired column widths; they’ll be scaled to fit
             double[] col = { 120, 360, 70, 60, 70, 45, 80 }; // Part#, Name, Suggested, Change, Final, Unit, Category
 
-            // locals that change per page
-            PdfPage page = NewPage(doc);
-            using var gfx = XGraphics.FromPdfPage(page);
-            var ctx = CreatePageContext(page, margin);
+            // page state
+            var page = NewPage(doc);
+            var gfx  = XGraphics.FromPdfPage(page);
+            var ctx  = CreatePageContext(page, margin);
 
             ScaleToFit(col, ctx.ContentWidth);
 
             double y = ctx.Top;
 
-            // draw title + header on first page
             DrawTitle(gfx, fontTitle, title, ctx.Left, ref y);
             DrawHeader(gfx, fontHeader, ctx, col, ref y);
 
@@ -50,42 +49,28 @@ namespace Nuform.App.Services
                     r.Category ?? ""
                 };
 
-                // compute row height (word wrap on each column)
-                double lineH = fontCell.GetHeight(gfx) + 2;
-                int maxLines = 1;
-                for (int i = 0; i < col.Length; i++)
-                    maxLines = Math.Max(maxLines, WrapCount(gfx, fontCell, cells[i], col[i]));
-                double rowH = maxLines * lineH + 6; // padding
+                double lineH  = MeasureLineHeight(gfx, fontCell);
+                int    lines  = MaxWrapLines(gfx, fontCell, cells, col);
+                double rowH   = lines * lineH + 6; // padding
 
-                // new page if needed
+                // page break?
                 if (y + rowH > ctx.Bottom)
                 {
+                    gfx.Dispose();
                     page = NewPage(doc);
-                    gfx.Dispose(); // dispose old page graphics
-                    using var _ = new object(); // keep using-scopes valid (no-op)
-                    var gfx2 = XGraphics.FromPdfPage(page);
+                    gfx  = XGraphics.FromPdfPage(page);
+                    ctx  = CreatePageContext(page, margin);
+                    y    = ctx.Top;
 
-                    // reset ctx / y and reassign gfx reference
-                    var newCtx = CreatePageContext(page, margin);
-                    double y2 = newCtx.Top;
-                    DrawTitle(gfx2, fontTitle, title, newCtx.Left, ref y2);
-                    DrawHeader(gfx2, fontHeader, newCtx, col, ref y2);
-
-                    // swap locals
-                    typeof(XGraphics).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(gfx, true); // ensure not used again
-                    // rebind everything to the new graphics/page
-                    DrawRow(gfx2, fontCell, newCtx, col, cells, ref y2);
-                    // update outer refs
-                    page = page; // no-op, clarity
-                    y = y2;
-                    ctx = newCtx;
-                    continue;
+                    DrawTitle(gfx, fontTitle, title, ctx.Left, ref y);
+                    DrawHeader(gfx, fontHeader, ctx, col, ref y);
                 }
 
                 DrawRow(gfx, fontCell, ctx, col, cells, ref y);
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            gfx.Dispose();
             doc.Save(path);
         }
 
@@ -94,6 +79,17 @@ namespace Nuform.App.Services
         private struct PageContext
         {
             public double Left, Top, Right, Bottom, ContentWidth;
+        }
+
+        private static double MeasureLineHeight(XGraphics gfx, XFont font)
+            => gfx.MeasureString("Ag", font).Height + 2; // small padding
+
+        private static int MaxWrapLines(XGraphics gfx, XFont font, string[] cells, double[] widths)
+        {
+            int max = 1;
+            for (int i = 0; i < cells.Length; i++)
+                max = Math.Max(max, WrapCount(gfx, font, cells[i] ?? "", widths[i]));
+            return max;
         }
 
         private static PageContext CreatePageContext(PdfPage page, double margin)
@@ -128,30 +124,31 @@ namespace Nuform.App.Services
         private static void DrawHeader(XGraphics gfx, XFont font, PageContext ctx, double[] col, ref double y)
         {
             string[] headers = { "Part #", "Name", "Suggested", "Change", "Final", "Unit", "Category" };
-            double rowH = font.GetHeight(gfx) + 10;
+            double rowH = MeasureLineHeight(gfx, font) + 8;
+
             gfx.DrawRectangle(XBrushes.LightGray, ctx.Left, y - 2, ctx.ContentWidth, rowH);
+
             double x = ctx.Left;
             for (int i = 0; i < col.Length; i++)
             {
                 gfx.DrawString(headers[i], font, XBrushes.Black, new XPoint(x + 2, y + 2));
                 x += col[i];
             }
+
             gfx.DrawLine(XPens.LightGray, ctx.Left, y + rowH, ctx.Right, y + rowH);
             y += rowH;
         }
 
         private static void DrawRow(XGraphics gfx, XFont font, PageContext ctx, double[] col, string[] cells, ref double y)
         {
-            double lineH = font.GetHeight(gfx) + 2;
-            int maxLines = 1;
-            for (int i = 0; i < col.Length; i++)
-                maxLines = Math.Max(maxLines, WrapCount(gfx, font, cells[i], col[i]));
-            double rowH = maxLines * lineH + 6;
+            double lineH = MeasureLineHeight(gfx, font);
+            int    lines = MaxWrapLines(gfx, font, cells, col);
+            double rowH  = lines * lineH + 6;
 
             double x = ctx.Left;
             for (int i = 0; i < col.Length; i++)
             {
-                DrawWrapped(gfx, font, cells[i], x + 2, y + 3, col[i] - 4, lineH);
+                DrawWrapped(gfx, font, cells[i] ?? "", x + 2, y + 3, col[i] - 4, lineH);
                 x += col[i];
             }
             gfx.DrawLine(XPens.LightGray, ctx.Left, y + rowH, ctx.Right, y + rowH);
