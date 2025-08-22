@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Nuform.Core;
 using Nuform.Core.Domain;
+using Nuform.Core.LegacyCompat;
 using Nuform.App.Views;
 using Nuform.App.ViewModels;
 
