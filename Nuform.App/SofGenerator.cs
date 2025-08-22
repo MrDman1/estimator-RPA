@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Nuform.Core;
-using Nuform.Core.LegacyCompat;
 
 namespace Nuform.App;
 
@@ -16,21 +15,25 @@ public static class SofGenerator
     /// <summary>
     /// Builds a .SOF text file for the supplied estimate and returns the
     /// path to the generated file. The output is saved to the BOM's
-    /// <c>1-CURRENT</c> directory if it can be located via
-    /// <see cref="PathDiscovery"/>.
+    /// <c>1-CURRENT</c> directory.
     /// </summary>
     /// <param name="cfg">Application configuration.</param>
     /// <param name="bomNumber">The BOM number associated with the estimate.</param>
     /// <param name="result">The estimate result.</param>
-    /// <returns>The path to the generated .SOF file or <c>null</c> if the
-    /// BOM folder could not be located.</returns>
-    public static string? Generate(AppConfig cfg, string bomNumber, EstimateResult result)
+    /// <returns>The path to the generated .SOF file.</returns>
+    private static void EnsureDirectory(string? path)
     {
-        // Discover the BOM folder. The estimator stores SOF files inside
-        // the "1-CURRENT" sub directory for a BOM.
-        var bomFolder = PathDiscovery.FindBomFolder(cfg.WipDesignRoot, bomNumber);
-        if (bomFolder == null)
-            return null;
+        if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Output path is empty.");
+        Directory.CreateDirectory(path);
+    }
+
+    public static string Generate(AppConfig cfg, string bomNumber, EstimateResult result)
+    {
+        // Determine the BOM folder and ensure it exists and is writable.
+        var bomFolder = Path.Combine(cfg.WipDesignRoot, bomNumber, "1-CURRENT");
+        EnsureDirectory(bomFolder);
+        var probe = Path.Combine(bomFolder, ".write_probe");
+        using (File.Create(probe, 1, FileOptions.DeleteOnClose)) { }
 
         // Load catalog information so that unit pricing can be looked up.
         // The catalog path mirrors the default used by the estimator when
@@ -87,7 +90,6 @@ public static class SofGenerator
                 ext.ToString("F2", CultureInfo.InvariantCulture)));
         }
 
-        Directory.CreateDirectory(bomFolder);
         var sofPath = Path.Combine(bomFolder, bomNumber + ".sof");
         File.WriteAllLines(sofPath, lines);
         return sofPath;
