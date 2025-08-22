@@ -1,10 +1,9 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using Nuform.Core.Domain;
 
 namespace Nuform.App.ViewModels;
 
-public sealed class CalculationsViewModel : INotifyPropertyChanged
+public sealed class CalculationsViewModel
 {
     public ObservableCollection<FormulaRow> FormulaRows { get; } = new();
 
@@ -52,6 +51,4 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
             }
         }
     }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }
