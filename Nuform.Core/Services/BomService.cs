@@ -11,7 +11,7 @@ public static class BomService
         var list = new List<BomLineItem>();
         missing = false;
 
-        void Add(PartSpec spec, decimal qty)
+        void Add(PartSpec spec, decimal qty, string? cat = null)
         {
             list.Add(new BomLineItem
             {
@@ -19,27 +19,23 @@ public static class BomService
                 Name = spec.Description,
                 Quantity = qty,
                 Unit = spec.Units,
-                Category = spec.Category
+                Category = cat ?? spec.Category
             });
         }
 
-        // ----- WALL PANELS -----
+        decimal wallPanelLf = 0m;
+        decimal ceilingPanelLf = 0m;
+
+        // Wall panels
         try
         {
-            var wallPanelSpec = catalog.ResolvePanelSku(
+            var wallPanelSpec = catalog.FindPanel(
                 input.WallPanelSeries,
-                input.WallPanelWidthInches,
-                input.WallPanelLengthFt,
-                input.WallPanelColor);
-
-            list.Add(new BomLineItem
-            {
-                PartNumber = wallPanelSpec.PartNumber,
-                Name = wallPanelSpec.Description,
-                Quantity = result.Panels.RoundedPanels,
-                Unit = "pcs",
-                Category = "Panel"
-            });
+                input.WallPanelColor,
+                (int)input.WallPanelLengthFt);
+            if (wallPanelSpec == null) throw new InvalidOperationException();
+            Add(wallPanelSpec, result.Panels.RoundedPanels, "Panels");
+            wallPanelLf = result.Panels.RoundedPanels * (decimal)wallPanelSpec.LengthFt;
         }
         catch (InvalidOperationException)
         {
@@ -47,7 +43,8 @@ public static class BomService
             Console.Error.WriteLine("Missing panel specification");
         }
 
-        // ----- CEILING PANELS -----
+        // Ceiling panels
+        decimal roundedCeiling = 0m;
         if (input.IncludeCeilingPanels)
         {
             decimal panelArea = (input.CeilingPanelWidthInches / 12m) * input.CeilingPanelLengthFt;
@@ -55,24 +52,17 @@ public static class BomService
             var baseCeilingPanels = (int)Math.Ceiling(ceilingArea / panelArea);
             var extraPercent = (decimal)(input.ExtraPercent ?? CalcSettings.DefaultExtraPercent);
             var withExtra = baseCeilingPanels * (1m + extraPercent / 100m);
-            var roundedCeiling = CalcService.RoundPanels((double)withExtra);
+            roundedCeiling = CalcService.RoundPanels((double)withExtra);
 
             try
             {
-                var ceilSpec = catalog.ResolvePanelSku(
+                var ceilSpec = catalog.FindPanel(
                     input.CeilingPanelSeries,
-                    input.CeilingPanelWidthInches,
-                    input.CeilingPanelLengthFt,
-                    input.CeilingPanelColor);
-
-                list.Add(new BomLineItem
-                {
-                    PartNumber = ceilSpec.PartNumber,
-                    Name = $"{ceilSpec.Description} (CEILING)",
-                    Quantity = roundedCeiling,
-                    Unit = "pcs",
-                    Category = "Panel"
-                });
+                    input.CeilingPanelColor,
+                    (int)input.CeilingPanelLengthFt);
+                if (ceilSpec == null) throw new InvalidOperationException();
+                Add(ceilSpec, roundedCeiling, "Panels");
+                ceilingPanelLf = roundedCeiling * (decimal)ceilSpec.LengthFt;
             }
             catch (InvalidOperationException)
             {
@@ -97,7 +87,7 @@ public static class BomService
             }
         }
 
-        // Inside Corners
+        // Inside corners
         if (result.InsideCorners > 0)
         {
             var ic = catalog.FindByCategoryAndLength("BRIGHT WHITE", "CornerInside", 12);
@@ -114,7 +104,7 @@ public static class BomService
             }
         }
 
-        // Ceiling Transition trims
+        // Ceiling transition trims
         if (result.Trims.CeilingTransition != null && result.Trims.CeilingTrimLF > 0)
         {
             switch (result.Trims.CeilingTransition)
@@ -151,6 +141,46 @@ public static class BomService
             }
         }
 
+        // Hardware
+        decimal trimLfTotal = (decimal)result.Trims.JTrimLF + (decimal)result.Trims.CeilingTrimLF + result.InsideCorners * (decimal)input.Height;
+
+        if (input.IncludeWallScrews)
+        {
+            var pkgs = CalcScrewPackages(wallPanelLf, trimLfTotal, 2.0);
+            if (pkgs > 0)
+                Add(catalog.GetHardware("HPR016AANA"), pkgs, "Screws");
+        }
+
+        if (input.IncludeCeilingScrews)
+        {
+            var pkgs = CalcScrewPackages(ceilingPanelLf, trimLfTotal, 1.5);
+            if (pkgs > 0)
+                Add(catalog.GetHardware("HPR017AANA"), pkgs, "Screws");
+        }
+
+        if (input.IncludePlugs)
+        {
+            var plugCode = input.WallPanelColor.ToUpperInvariant() switch
+            {
+                "BLACK" => "GEL1PPAABK",
+                "BRIGHT WHITE" => "GEL1PPAABW",
+                _ => "GEL1PPAAWH"
+            };
+            Add(catalog.GetHardware(plugCode), 1, "Accessories");
+        }
+
+        if (input.IncludeSpacers)
+            Add(catalog.GetHardware("GEL1PSADWH"), 1, "Accessories");
+
+        if (input.IncludeExpansionTool)
+            Add(catalog.GetHardware("HPR018AENA"), 1, "Accessories");
+
         return list;
+    }
+
+    public static int CalcScrewPackages(decimal panelLf, decimal trimLf, double divisor)
+    {
+        var pieces = (double)(panelLf + trimLf) / divisor;
+        return (int)Math.Ceiling(pieces / 500.0);
     }
 }

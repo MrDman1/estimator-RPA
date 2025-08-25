@@ -61,13 +61,39 @@ public class CatalogService
             .FirstOrDefault();
     }
 
-    public PartSpec ResolvePanelSku(string series, int widthInches, decimal lengthFt, string color)
-    {
-        var keyColor = color.ToUpperInvariant();
+      public PartSpec ResolvePanelSku(string series, int widthInches, decimal lengthFt, string color)
+      {
+          var keyColor = color.ToUpperInvariant();
 
-        return FindBySeriesWidthLengthColor(series, widthInches, lengthFt, keyColor)
-               ?? throw new InvalidOperationException($"Panel SKU not found for {series} {widthInches}\" {lengthFt}' {color}");
-    }
+          return FindBySeriesWidthLengthColor(series, widthInches, lengthFt, keyColor)
+                 ?? throw new InvalidOperationException($"Panel SKU not found for {series} {widthInches}\" {lengthFt}' {color}");
+      }
+
+      public PartSpec? FindPanel(string series, string color, int lengthFt)
+      {
+          var candidates = _parts.Values
+              .Where(p => p.Category.Equals("Panel", StringComparison.OrdinalIgnoreCase)
+                          && p.Description.Contains(series, StringComparison.OrdinalIgnoreCase)
+                          && p.Color.Equals(color, StringComparison.OrdinalIgnoreCase))
+              .OrderBy(p => p.LengthFt)
+              .ToList();
+
+          if (candidates.Count == 0) return null;
+
+          var exact = candidates.FirstOrDefault(p => Math.Abs(p.LengthFt - lengthFt) < 0.01);
+          if (exact != null) return exact;
+
+          var longer = candidates.FirstOrDefault(p => p.LengthFt >= lengthFt);
+          if (longer != null) return longer;
+
+          return candidates.OrderBy(p => Math.Abs(p.LengthFt - lengthFt)).First();
+      }
+
+      public PartSpec GetHardware(string code)
+      {
+          if (_parts.TryGetValue(code, out var spec)) return spec;
+          throw new InvalidOperationException($"Hardware SKU not found: {code}");
+      }
 
     // helper that queries the loaded CSV rows and returns the exact PartSpec
     private PartSpec? FindBySeriesWidthLengthColor(string series, int widthInches, decimal lengthFt, string color)

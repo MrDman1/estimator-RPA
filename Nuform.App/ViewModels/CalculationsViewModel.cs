@@ -75,6 +75,19 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
             },
             $"Base = {result.Panels.BasePanels}",
             $"Rounded = {result.Panels.RoundedPanels}  (Overage = {result.Panels.OveragePercentRounded:N1}%)"));
+
+        if (input.IncludeCeilingPanels)
+        {
+            decimal panelArea = (input.CeilingPanelWidthInches / 12m) * input.CeilingPanelLengthFt;
+            decimal ceilingArea = (decimal)input.Length * (decimal)input.Width;
+            var baseCeil = (int)Math.Ceiling(ceilingArea / panelArea);
+            var extra = (decimal)(input.ExtraPercent ?? CalcSettings.DefaultExtraPercent);
+            var withExtra = baseCeil * (1m + extra / 100m);
+            var rounded = CalcService.RoundPanels((double)withExtra);
+            Rows.Add(FormulaRow.Const("Ceiling Panels",
+                $"Base = {baseCeil}",
+                $"Rounded = {rounded}"));
+        }
     }
 
     private void Recompute()
