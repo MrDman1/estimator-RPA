@@ -8,6 +8,7 @@ using Nuform.Core.Domain;
 using Nuform.Core.Services;
 using Nuform.App.Models;
 using Nuform.App.Services;
+using Nuform.App.Views;
 
 namespace Nuform.App.ViewModels
 {
