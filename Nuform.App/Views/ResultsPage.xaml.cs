@@ -1,12 +1,12 @@
 using System.Windows.Controls;
-using Nuform.Core.Domain;
 using Nuform.App.ViewModels;
+using CoreEstimateState = Nuform.Core.Domain.EstimateState;
 
 namespace Nuform.App.Views
 {
     public partial class ResultsPage : Page
     {
-        public ResultsPage(EstimateState state)
+        public ResultsPage(CoreEstimateState state)
         {
             InitializeComponent();
             DataContext = new ResultsViewModel(state);
