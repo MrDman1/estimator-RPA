@@ -66,11 +66,16 @@ namespace Nuform.App
                 CeilingPanelColor = "NUFORM WHITE"
             };
 
+            // Build result using your calculator
             var result = CalcService.CalcEstimate(input);
-            var state = new Nuform.Core.Domain.EstimateState(input, result);
 
-            // Navigate to results page
-            NavigationService?.Navigate(new ResultsPage(state));
+            // Use the actual available constructor (parameterless) and assign properties.
+            var state = new Nuform.Core.Domain.EstimateState();
+            state.Input = input;
+            state.Result = result;
+
+            // Navigate to ResultsPage (in Nuform.App.Views)
+            NavigationService?.Navigate(new Nuform.App.Views.ResultsPage(state));
         }
 
         private string? GetSelectedTransition()

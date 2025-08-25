@@ -1,11 +1,12 @@
 using System.Windows;
 
-namespace Nuform.App.Views;
-
-public partial class CalculationsWindow : Window
+namespace Nuform.App.Views
 {
-    public CalculationsWindow()
+    public partial class CalculationsWindow : Window
     {
-        InitializeComponent();
+        public CalculationsWindow()
+        {
+            InitializeComponent();
+        }
     }
 }

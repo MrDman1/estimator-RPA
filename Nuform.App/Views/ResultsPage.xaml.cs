@@ -1,13 +1,15 @@
 using System.Windows.Controls;
+using Nuform.Core.Domain;
 using Nuform.App.ViewModels;
 
-namespace Nuform.App.Views;
-
-public partial class ResultsPage : Page
+namespace Nuform.App.Views
 {
-    public ResultsPage(EstimateState state)
+    public partial class ResultsPage : Page
     {
-        InitializeComponent();
-        DataContext = new ResultsViewModel(state);
+        public ResultsPage(EstimateState state)
+        {
+            InitializeComponent();
+            DataContext = new ResultsViewModel(state);
+        }
     }
 }
