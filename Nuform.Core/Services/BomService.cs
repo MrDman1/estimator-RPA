@@ -52,23 +52,37 @@ public static class BomService
         decimal roundedCeiling = 0m;
         if (input.IncludeCeilingPanels)
         {
-            decimal panelArea = (input.CeilingPanelWidthInches / 12m) * input.CeilingPanelLengthFt;
-            decimal ceilingArea = (decimal)input.Length * (decimal)input.Width;
-            var baseCeilingPanels = (int)Math.Ceiling(ceilingArea / panelArea);
+            decimal panelWidthFt = input.CeilingPanelWidthInches == 18 ? 1.5m : 1.0m;
+            int panelsNeeded;
+            decimal panelLengthUsed;
+            if (input.CeilingOrientation == CeilingOrientation.Widthwise)
+            {
+                int rows = (int)Math.Ceiling((decimal)input.Length / panelWidthFt);
+                panelsNeeded = rows;
+                panelLengthUsed = (decimal)input.Width;
+            }
+            else
+            {
+                int rows = (int)Math.Ceiling((decimal)input.Width / panelWidthFt);
+                int perRow = (int)Math.Ceiling((decimal)input.Length / input.CeilingPanelLengthFt);
+                panelsNeeded = rows * perRow;
+                panelLengthUsed = input.CeilingPanelLengthFt;
+            }
             var extraPercent = (decimal)(input.ExtraPercent ?? CalcSettings.DefaultExtraPercent);
-            var withExtra = baseCeilingPanels * (1m + extraPercent / 100m);
-            roundedCeiling = CalcService.RoundPanels((double)withExtra);
+            var withExtra = panelsNeeded * (1m + extraPercent / 100m);
+            int baseCeiling = (int)Math.Ceiling(withExtra);
+            roundedCeiling = CalcService.RoundPanels(baseCeiling);
 
             try
             {
                 var color = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
-                var (code, name) = PanelCodeResolver.PanelSku(input.CeilingPanelWidthInches, (int)input.CeilingPanelLengthFt, color);
+                var (code, name) = PanelCodeResolver.PanelSku(input.CeilingPanelWidthInches, (int)panelLengthUsed, color);
                 var spec = new PartSpec
                 {
                     PartNumber = code,
                     Description = name,
                     Units = "PCS",
-                    LengthFt = (int)input.CeilingPanelLengthFt,
+                    LengthFt = (int)panelLengthUsed,
                     Category = "Panels"
                 };
                 Add(spec, roundedCeiling, "Panels");

@@ -8,6 +8,8 @@ namespace Nuform.Core.Domain;
 
 public enum OpeningTreatment { WRAPPED, BUTT }
 
+public enum CeilingOrientation { Widthwise, Lengthwise }
+
 public class OpeningInput
 {
     public string Type { get; set; } = string.Empty; // garage, man, window, custom
@@ -15,6 +17,8 @@ public class OpeningInput
     public double Height { get; set; }
     public int Count { get; set; }
     public OpeningTreatment Treatment { get; set; } = OpeningTreatment.BUTT;
+    public double HeaderHeightFt { get; set; }
+    public double SillHeightFt { get; set; }
 }
 
 public class TrimSelections
@@ -56,6 +60,7 @@ public class TrimSelections
         public int CeilingPanelWidthInches { get; set; } = 12;     // 12 or 18
         public decimal CeilingPanelLengthFt { get; set; } = 12m;
         public string CeilingPanelColor { get; set; } = "NUFORM WHITE";
+        public CeilingOrientation CeilingOrientation { get; set; } = CeilingOrientation.Lengthwise;
     }
 
 public class PanelCalcResult
@@ -109,26 +114,42 @@ public static class CalcService
             ? 2 * (input.Length + input.Width)
             : input.Length;
 
-        double openingsArea = 0;
-        double openingsPerimeterLF = 0;
+        double openingsButtPerimeter = 0;
+        double openingsWrappedPerimeter = 0;
+        double openingsWidthLF = 0;
+        double headerLFAdd = 0;
+        double panelWidthFt = input.PanelCoverageWidthFt;
         foreach (var op in input.Openings)
         {
-            double area = op.Width * op.Height * op.Count;
-            if (op.Treatment == OpeningTreatment.BUTT)
+            var per = 2 * (op.Width + op.Height) * op.Count;
+            if (op.Treatment == OpeningTreatment.WRAPPED)
             {
-                openingsArea += area;
-                openingsPerimeterLF += 2 * (op.Width + op.Height) * op.Count;
+                openingsWrappedPerimeter += per;
+            }
+            else
+            {
+                openingsButtPerimeter += per;
+                openingsWidthLF += op.Width * op.Count;
+                double headerAndSill = Math.Max(0, op.HeaderHeightFt) + Math.Max(0, op.SillHeightFt);
+                if (headerAndSill > 0)
+                {
+                    double piecesPerFull = (double)input.WallPanelLengthFt / headerAndSill;
+                    if (piecesPerFull > 0)
+                    {
+                        double headerPanelsAdded = (op.Width * op.Count) / piecesPerFull;
+                        headerLFAdd += headerPanelsAdded * panelWidthFt;
+                    }
+                }
             }
         }
 
-        double wallArea = perimeter * input.Height;
-        double netWallArea = wallArea - openingsArea;
-        int basePanels = (int)Math.Ceiling(netWallArea / (input.PanelCoverageWidthFt * input.Height));
-
+        double netWallLF = perimeter - openingsWidthLF + headerLFAdd;
         double extraPercent = input.ExtraPercent ?? CalcSettings.DefaultExtraPercent;
-        double withExtra = basePanels * (1 + extraPercent / 100.0);
-        int roundedPanels = RoundPanels(withExtra);
-        double overagePercentRounded = ((roundedPanels - basePanels) / (double)basePanels) * 100.0;
+        double withExtra = netWallLF * (1 + extraPercent / 100.0);
+        int basePanels = (int)Math.Ceiling(withExtra / panelWidthFt);
+        int roundedPanels = RoundPanels(basePanels);
+        double overagePercentRounded = roundedPanels == 0 ? 0 :
+            (roundedPanels * panelWidthFt - withExtra) / (roundedPanels * panelWidthFt) * 100.0;
         bool warnExceeds = overagePercentRounded > CalcSettings.WarnWhenRoundedExceedsPercent;
         bool manualOverride = extraPercent != CalcSettings.DefaultExtraPercent;
 
@@ -137,7 +158,7 @@ public static class CalcService
         if (input.Trims.JTrimEnabled)
         {
             double multiplier = input.Trims.CeilingTransition != null ? 1 : 3;
-            jTrimLF = multiplier * perimeter + openingsPerimeterLF;
+            jTrimLF = multiplier * perimeter + openingsButtPerimeter;
         }
         if (input.Trims.CeilingTransition != null)
         {
