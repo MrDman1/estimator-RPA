@@ -2,7 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Nuform.Core.Domain;
-using CoreEstimateState = Nuform.Core.Domain.EstimateState;
 
 namespace Nuform.App.ViewModels;
 
@@ -14,10 +13,10 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
 
     public ObservableCollection<FormulaRow> Rows { get; } = new();
 
-    private readonly CoreEstimateState _state;
+    private readonly EstimateState _state;
     private CalcEstimateResult _last;
 
-    public CalculationsViewModel(CoreEstimateState state)
+    public CalculationsViewModel(EstimateState state)
     {
         _state = state;
         _last = CalcService.CalcEstimate(_state.Input);

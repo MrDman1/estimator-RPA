@@ -9,20 +9,19 @@ using Nuform.Core.Services;
 using Nuform.App.Models;
 using Nuform.App.Services;
 using Nuform.App.Views;
-using CoreEstimateState = Nuform.Core.Domain.EstimateState;
 
 namespace Nuform.App.ViewModels
 {
     public sealed class ResultsViewModel : INotifyPropertyChanged
     {
-        public CoreEstimateState State { get; }
+        public EstimateState State { get; }
         private readonly CatalogService _catalog = new();
         private bool _catalogError;
 
         private decimal _extrasPercent;
         private string _extrasPercentText = "5";
 
-        public ResultsViewModel(CoreEstimateState state)
+        public ResultsViewModel(EstimateState state)
         {
             State = state ?? throw new ArgumentNullException(nameof(state));
 
