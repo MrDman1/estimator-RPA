@@ -9,29 +9,30 @@ using Nuform.Core.Services;
 using Nuform.App.Models;
 using Nuform.App.Services;
 using Nuform.App.Views;
+using CoreEstimateState = Nuform.Core.Domain.EstimateState;
 
 namespace Nuform.App.ViewModels
 {
-    public class ResultsViewModel : INotifyPropertyChanged
+    public sealed class ResultsViewModel : INotifyPropertyChanged
     {
-        private readonly EstimateState _state;
+        public CoreEstimateState State { get; }
         private readonly CatalogService _catalog = new();
         private bool _catalogError;
 
         private decimal _extrasPercent;
         private string _extrasPercentText = "5";
 
-        public ResultsViewModel(Nuform.Core.Domain.EstimateState state)
+        public ResultsViewModel(CoreEstimateState state)
         {
-            _state = state;
+            State = state ?? throw new ArgumentNullException(nameof(state));
 
-            _extrasPercent = (decimal?)(state.Input.ExtraPercent) ?? (decimal)CalcSettings.DefaultExtraPercent;
-            state.Input.ExtraPercent = (double)_extrasPercent;
+            _extrasPercent = (decimal?)(State.Input.ExtraPercent) ?? (decimal)CalcSettings.DefaultExtraPercent;
+            State.Input.ExtraPercent = (double)_extrasPercent;
             _extrasPercentText = _extrasPercent.ToString();
 
             OpenCalculationsCommand = new RelayCommand(_ =>
             {
-                var vm = new CalculationsViewModel(_state);
+                var vm = new CalculationsViewModel(State);
                 var win = new CalculationsWindow { DataContext = vm };
                 win.Owner = Application.Current.MainWindow;
                 win.Show();
@@ -73,7 +74,7 @@ namespace Nuform.App.ViewModels
 
             FinishCommand = new RelayCommand(_ => { });
 
-            _state.Updated += Recalculate;
+            State.Updated += Recalculate;
             Recalculate();
         }
 
@@ -90,7 +91,7 @@ namespace Nuform.App.ViewModels
                 if (_extrasPercent != value)
                 {
                     _extrasPercent = value;
-                    _state.Input.ExtraPercent = (double)value;
+                    State.Input.ExtraPercent = (double)value;
                     _extrasPercentText = value.ToString();
                     OnPropertyChanged(nameof(ExtrasPercent));
                     OnPropertyChanged(nameof(ExtrasPercentText));
@@ -123,18 +124,18 @@ namespace Nuform.App.ViewModels
 
         private void Recalculate()
         {
-            _state.Result = CalcService.CalcEstimate(_state.Input);
-            BasePanels = _state.Result.Panels.BasePanels;
-            RoundedPanels = _state.Result.Panels.RoundedPanels;
-            OveragePercentRounded = (decimal)_state.Result.Panels.OveragePercentRounded;
-            ShowOverageWarning = _state.Result.Panels.WarnExceedsConfigured;
+            State.Result = CalcService.CalcEstimate(State.Input);
+            BasePanels = State.Result.Panels.BasePanels;
+            RoundedPanels = State.Result.Panels.RoundedPanels;
+            OveragePercentRounded = (decimal)State.Result.Panels.OveragePercentRounded;
+            ShowOverageWarning = State.Result.Panels.WarnExceedsConfigured;
 
             OnPropertyChanged(nameof(BasePanels));
             OnPropertyChanged(nameof(RoundedPanels));
             OnPropertyChanged(nameof(OveragePercentRounded));
             OnPropertyChanged(nameof(ShowOverageWarning));
 
-            var bom = BomService.Build(_state.Input, _state.Result, _catalog, out var missing);
+            var bom = BomService.Build(State.Input, State.Result, _catalog, out var missing);
             BillOfMaterials.Clear();
             foreach (var item in bom)
             {
