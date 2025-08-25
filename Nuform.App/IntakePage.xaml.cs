@@ -6,6 +6,7 @@ using Nuform.Core;
 using Nuform.Core.Domain;
 using Nuform.Core.LegacyCompat;
 using Nuform.App.ViewModels;
+using VmEstimateState = Nuform.App.ViewModels.EstimateState;
 
 namespace Nuform.App
 {
@@ -20,7 +21,7 @@ namespace Nuform.App
 
         private ObservableCollection<Room> Rooms { get; } = new();
         private ObservableCollection<OpeningInput> Openings { get; } = new();
-        private readonly EstimateState _state = new();
+        private readonly VmEstimateState _state = new();
 
         public IntakePage()
         {
