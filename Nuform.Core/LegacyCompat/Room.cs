@@ -10,4 +10,8 @@ public class Room
     public bool HasCeiling { get; set; }
     public double CeilingPanelLengthFt { get; set; }
     public CeilingOrientation CeilingOrientation { get; set; } = CeilingOrientation.Lengthwise;
+
+    // Per-room panel colors
+    public Nuform.Core.Domain.NuformColor WallPanelColor { get; set; } = Nuform.Core.Domain.NuformColor.NuformWhite;
+    public Nuform.Core.Domain.NuformColor CeilingPanelColor { get; set; } = Nuform.Core.Domain.NuformColor.NuformWhite;
 }
