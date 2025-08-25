@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 using Nuform.Core.Domain;
 
@@ -28,12 +29,49 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
     private void BuildText()
     {
         var input = _state.Input;
-        var result = _last;
         var sb = new StringBuilder();
 
         var L = (decimal)input.Length;
         var W = (decimal)input.Width;
         var perim = input.Mode == "ROOM" ? 2m * (L + W) : L;
+
+        double openingsWidthLF = input.Openings.Where(o => o.Treatment == OpeningTreatment.BUTT)
+            .Sum(o => o.Width * o.Count);
+        double panelWidthFt = input.WallPanelWidthInches == 18 ? 1.5 : 1.0;
+        double headerLFAdd = input.Openings.Where(o => o.Treatment == OpeningTreatment.BUTT)
+            .Sum(o =>
+            {
+                double headerAndSill = Math.Max(0, o.HeaderHeightFt) + Math.Max(0, o.SillHeightFt);
+                if (headerAndSill <= 0) return 0.0;
+                double piecesPerFull = (double)input.WallPanelLengthFt / headerAndSill;
+                if (piecesPerFull <= 0) return 0.0;
+                double headerPanelsAdded = (o.Width * o.Count) / piecesPerFull;
+                return headerPanelsAdded * panelWidthFt;
+            });
+        double netLF = (double)perim - openingsWidthLF + headerLFAdd;
+
+        double extrasPct = input.ExtraPercent ?? CalcSettings.DefaultExtraPercent;
+        double withExtras = netLF * (1 + extrasPct / 100.0);
+        int basePanels = (int)Math.Ceiling(withExtras / panelWidthFt);
+        int roundedPanels = CalcService.RoundPanels(basePanels);
+
+        sb.AppendLine("WALL PANELS");
+        sb.AppendLine($"Perimeter P = Σ2×(L+W) = {perim} ft");
+        sb.AppendLine($"Minus opening widths W_open = Σ(width×count) = {openingsWidthLF} ft");
+        sb.AppendLine($"Header add-back H_add: piecesPerFull = panelLen/(header+sill); headerPanelsAdded = width/piecesPerFull; H_add = headerPanelsAdded×{panelWidthFt:F1} = {headerLFAdd:F1} ft");
+        sb.AppendLine($"Net LF = P − W_open + H_add = {netLF:F1} ft");
+        sb.AppendLine($"Base panels = ceil(Net/{panelWidthFt:F1}) × (1+{extrasPct}%) = {basePanels}");
+        sb.AppendLine($"Rounded = {roundedPanels}  (even≤150, 5s>150)");
+        sb.AppendLine();
+
+        sb.AppendLine("Panels (by color):");
+        var wallPanelBreakdown = new List<(string color, decimal lenFt, int cnt)>
+        {
+            (input.WallPanelColor, input.WallPanelLengthFt, roundedPanels)
+        };
+        foreach (var (color, lenFt, cnt) in wallPanelBreakdown)
+            sb.AppendLine($"  {color}: length {lenFt}′ → {cnt} panels");
+        sb.AppendLine();
 
         double openingsButtPerimeter = 0;
         double openingsWrappedPerimeter = 0;
@@ -43,26 +81,6 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
             if (op.Treatment == OpeningTreatment.WRAPPED) openingsWrappedPerimeter += per;
             else openingsButtPerimeter += per;
         }
-
-        double headerLF = 0; // headers not modeled separately
-        var netLF = (double)perim - openingsButtPerimeter + headerLF;
-
-        sb.AppendLine("WALLS");
-        sb.AppendLine($"Perimeter: P = 2×(L+W) = {L}+{W} → {perim} ft");
-        sb.AppendLine($"Openings (BUTT): Op = Σ2×(w+h)×count = {openingsButtPerimeter} ft");
-        sb.AppendLine($"Openings (WRAPPED): Wr = Σ2×(w+h)×count = {openingsWrappedPerimeter} ft");
-        sb.AppendLine($"Headers: H = Σ(width×count) = {headerLF} ft");
-        sb.AppendLine($"Net LF: Net = P − Op + H = {perim} − {openingsButtPerimeter} + {headerLF} = {netLF} ft");
-        sb.AppendLine();
-
-        sb.AppendLine("Panels (by color):");
-        var wallPanelBreakdown = new List<(string color, decimal lenFt, int cnt)>
-        {
-            (input.WallPanelColor, input.WallPanelLengthFt, result.Panels.RoundedPanels)
-        };
-        foreach (var (color, lenFt, cnt) in wallPanelBreakdown)
-            sb.AppendLine($"  {color}: length {lenFt}′ → {cnt} panels");
-        sb.AppendLine();
 
         var wallColor = PanelCodeResolver.ParseColor(input.WallPanelColor);
         var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
@@ -120,15 +138,25 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         }
 
         sb.AppendLine();
-        sb.AppendLine("CEILINGS");
-        var panelWidthInches = input.CeilingPanelWidthInches;
-        var widthDiv = panelWidthInches == 18 ? 1.5 : 1.0;
-        var rows = input.IncludeCeilingPanels ? Math.Ceiling(input.Width / widthDiv) : 0;
-        var panelsPerRow = input.IncludeCeilingPanels ? Math.Ceiling(input.Length / (double)input.CeilingPanelLengthFt) : 0;
-        var totalCeilingPanels = rows * panelsPerRow;
-        sb.AppendLine($"Width rows: rows = width / {(panelWidthInches == 18 ? "1.5" : "1.0")} = {rows}");
-        sb.AppendLine($"Panels/row: len / panelLen = {input.Length} / {input.CeilingPanelLengthFt} = {panelsPerRow}");
-        sb.AppendLine($"Total: rows×panels/row = {rows}×{panelsPerRow} = {totalCeilingPanels}");
+        sb.AppendLine("CEILING PANELS");
+        if (input.IncludeCeilingPanels)
+        {
+            double cPanelWidthFt = input.CeilingPanelWidthInches == 18 ? 1.5 : 1.0;
+            int ceilingLenFt = (int)input.CeilingPanelLengthFt;
+            if (input.CeilingOrientation == CeilingOrientation.Widthwise)
+            {
+                int rows = (int)Math.Ceiling(input.Length / cPanelWidthFt);
+                int panelsWidthwise = rows;
+                sb.AppendLine($"Widthwise: rows = ceil(L/{cPanelWidthFt:F1}) = {rows}; panels = rows = {panelsWidthwise}");
+            }
+            else
+            {
+                int rows = (int)Math.Ceiling(input.Width / cPanelWidthFt);
+                int panelsPerRow = (int)Math.Ceiling(input.Length / (double)ceilingLenFt);
+                int panelsLengthwise = rows * panelsPerRow;
+                sb.AppendLine($"Lengthwise: rows = ceil(W/{cPanelWidthFt:F1}) = {rows}; panels/row = ceil(L/{ceilingLenFt}) = {panelsPerRow}; total = rows×panels/row = {panelsLengthwise}");
+            }
+        }
 
         foreach (var kv in ceilingTrimLF)
         {
@@ -142,12 +170,6 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
             var waste12 = packs12 == 0 ? 0.0 : (packs12 * pcs * 12.0 - lf) / (packs12 * pcs * 12.0);
             sb.AppendLine($"  {PanelCodeResolver.ColorName(color)} {kind}: LF={lf:F1} → try 16′: packs={packs16}, waste={waste16:P0}; try 12′: packs={packs12}, waste={waste12:P0} → chosen {decidedLen}′");
         }
-
-        sb.AppendLine();
-        sb.AppendLine("Panels");
-        sb.AppendLine($"Extras % = {input.ExtraPercent ?? CalcSettings.DefaultExtraPercent}");
-        sb.AppendLine($"Base = {result.Panels.BasePanels}");
-        sb.AppendLine($"Rounded = {result.Panels.RoundedPanels} (Overage = {result.Panels.OveragePercentRounded:N1}%)");
 
         CalculationsText = sb.ToString();
         OnPropertyChanged(nameof(CalculationsText));
