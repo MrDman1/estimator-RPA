@@ -1,5 +1,6 @@
 using System.Windows.Controls;
 using Nuform.App.ViewModels;
+using CoreEstimateState = Nuform.Core.Domain.EstimateState;
 
 // Alias the Core type so there’s no ambiguity
 using CoreEstimateState = Nuform.Core.Domain.EstimateState;

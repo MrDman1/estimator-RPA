@@ -21,7 +21,7 @@ namespace Nuform.App.ViewModels
         private decimal _extrasPercent;
         private string _extrasPercentText = "5";
 
-        public ResultsViewModel(EstimateState state)
+        public ResultsViewModel(Nuform.Core.Domain.EstimateState state)
         {
             _state = state;
 
