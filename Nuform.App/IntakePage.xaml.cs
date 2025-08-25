@@ -5,8 +5,7 @@ using System.Windows.Controls;
 using Nuform.Core;
 using Nuform.Core.Domain;
 using Nuform.Core.LegacyCompat;
-// NOTE: Do NOT import Nuform.App.ViewModels here; it creates name collisions.
-// using Nuform.App.ViewModels;
+using Nuform.App.ViewModels;
 
 namespace Nuform.App
 {
@@ -21,6 +20,7 @@ namespace Nuform.App
 
         private ObservableCollection<Room> Rooms { get; } = new();
         private ObservableCollection<OpeningInput> Openings { get; } = new();
+        private readonly EstimateState _state = new();
 
         public IntakePage()
         {
@@ -66,15 +66,11 @@ namespace Nuform.App
                 CeilingPanelColor = "NUFORM WHITE"
             };
 
-            var result = CalcService.CalcEstimate(input);
-            var state = new Nuform.Core.Domain.EstimateState
-            {
-                Input = input,
-                Result = result
-            };
+            _state.Input = input;
+            _state.Result = CalcService.CalcEstimate(input);
 
             // Navigate to results page
-            NavigationService?.Navigate(new Nuform.App.Views.ResultsPage(state));
+            NavigationService?.Navigate(new Nuform.App.Views.ResultsPage(_state));
         }
 
         private string? GetSelectedTransition()
