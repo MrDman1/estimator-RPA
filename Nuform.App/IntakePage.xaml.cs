@@ -16,6 +16,9 @@ namespace Nuform.App
         public static CeilingOrientation[] CeilingOrientations { get; } =
             (CeilingOrientation[])System.Enum.GetValues(typeof(CeilingOrientation));
 
+        public static NuformColor[] PanelColors { get; } =
+            (NuformColor[])System.Enum.GetValues(typeof(NuformColor));
+
         public static OpeningTreatment[] OpeningTreatments { get; } =
             (OpeningTreatment[])System.Enum.GetValues(typeof(OpeningTreatment));
 
@@ -61,11 +64,11 @@ namespace Nuform.App
                 WallPanelSeries = "R3",
                 WallPanelWidthInches = (int)room.PanelWidthInches,
                 WallPanelLengthFt = (decimal)room.WallPanelLengthFt,
-                WallPanelColor = "NUFORM WHITE",
+                WallPanelColor = PanelCodeResolver.ColorName(room.WallPanelColor),
                 CeilingPanelSeries = "R3",
                 CeilingPanelWidthInches = (int)room.PanelWidthInches,
                 CeilingPanelLengthFt = (decimal)room.CeilingPanelLengthFt,
-                CeilingPanelColor = "NUFORM WHITE",
+                CeilingPanelColor = PanelCodeResolver.ColorName(room.CeilingPanelColor),
                 IncludeWallScrews = _state.Input.IncludeWallScrews,
                 IncludeCeilingScrews = _state.Input.IncludeCeilingScrews,
                 IncludePlugs = _state.Input.IncludePlugs,

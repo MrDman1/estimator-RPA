@@ -26,18 +26,23 @@ public static class BomService
         decimal wallPanelLf = 0m;
         decimal ceilingPanelLf = 0m;
 
-        // Wall panels
+        // Wall panels using resolver
         try
         {
-            var wallPanelSpec = catalog.FindPanel(
-                input.WallPanelSeries,
-                input.WallPanelColor,
-                (int)input.WallPanelLengthFt);
-            if (wallPanelSpec == null) throw new InvalidOperationException();
-            Add(wallPanelSpec, result.Panels.RoundedPanels, "Panels");
-            wallPanelLf = result.Panels.RoundedPanels * (decimal)wallPanelSpec.LengthFt;
+            var color = PanelCodeResolver.ParseColor(input.WallPanelColor);
+            var (code, name) = PanelCodeResolver.PanelSku(input.WallPanelWidthInches, (int)input.WallPanelLengthFt, color);
+            var spec = new PartSpec
+            {
+                PartNumber = code,
+                Description = name,
+                Units = "PCS",
+                LengthFt = (int)input.WallPanelLengthFt,
+                Category = "Panels"
+            };
+            Add(spec, result.Panels.RoundedPanels, "Panels");
+            wallPanelLf = result.Panels.RoundedPanels * (decimal)spec.LengthFt;
         }
-        catch (InvalidOperationException)
+        catch (Exception)
         {
             missing = true;
             Console.Error.WriteLine("Missing panel specification");
@@ -56,15 +61,20 @@ public static class BomService
 
             try
             {
-                var ceilSpec = catalog.FindPanel(
-                    input.CeilingPanelSeries,
-                    input.CeilingPanelColor,
-                    (int)input.CeilingPanelLengthFt);
-                if (ceilSpec == null) throw new InvalidOperationException();
-                Add(ceilSpec, roundedCeiling, "Panels");
-                ceilingPanelLf = roundedCeiling * (decimal)ceilSpec.LengthFt;
+                var color = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
+                var (code, name) = PanelCodeResolver.PanelSku(input.CeilingPanelWidthInches, (int)input.CeilingPanelLengthFt, color);
+                var spec = new PartSpec
+                {
+                    PartNumber = code,
+                    Description = name,
+                    Units = "PCS",
+                    LengthFt = (int)input.CeilingPanelLengthFt,
+                    Category = "Panels"
+                };
+                Add(spec, roundedCeiling, "Panels");
+                ceilingPanelLf = roundedCeiling * (decimal)spec.LengthFt;
             }
-            catch (InvalidOperationException)
+            catch (Exception)
             {
                 missing = true;
                 Console.Error.WriteLine("Missing ceiling panel specification");

@@ -19,9 +19,11 @@
                 <DataGridTextColumn Header="H" Binding="{Binding HeightFt}" />
                 <DataGridTextColumn Header="WallPanelLen" Binding="{Binding WallPanelLengthFt}" />
                 <DataGridComboBoxColumn Header="PanelWidth" SelectedItemBinding="{Binding PanelWidthInches}" ItemsSource="{x:Static local:IntakePage.PanelWidths}" />
+                <DataGridComboBoxColumn Header="WallColor" SelectedItemBinding="{Binding WallPanelColor}" ItemsSource="{x:Static local:IntakePage.PanelColors}" />
                 <DataGridCheckBoxColumn Header="Ceiling" Binding="{Binding HasCeiling}" />
                 <DataGridTextColumn Header="CeilingLen" Binding="{Binding CeilingPanelLengthFt}" />
                 <DataGridComboBoxColumn Header="Orientation" SelectedItemBinding="{Binding CeilingOrientation}" ItemsSource="{x:Static local:IntakePage.CeilingOrientations}" />
+                <DataGridComboBoxColumn Header="CeilColor" SelectedItemBinding="{Binding CeilingPanelColor}" ItemsSource="{x:Static local:IntakePage.PanelColors}" />
             </DataGrid.Columns>
         </DataGrid>
         <TextBlock Text="Openings" FontWeight="Bold"/>
