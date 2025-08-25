@@ -1,37 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\",
-  "Documents": [
-    {
-      "AbsoluteMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|c:\\users\\dbeland\\onedrive - nuform building technologies inc\\documents\\github\\estimator-rpa\\nuform.app\\views\\resultspage.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|solutionrelative:nuform.app\\views\\resultspage.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    }
-  ],
+  "Documents": [],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": [
-        {
-          "DockedWidth": 200,
-          "SelectedChildIndex": 0,
-          "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "ResultsPage.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\Views\\ResultsPage.xaml.cs",
-              "RelativeDocumentMoniker": "Nuform.App\\Views\\ResultsPage.xaml.cs",
-              "ToolTip": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\Views\\ResultsPage.xaml.cs*",
-              "RelativeToolTip": "Nuform.App\\Views\\ResultsPage.xaml.cs*",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-25T15:40:06.486Z",
-              "EditorCaption": ""
-            }
-          ]
-        }
-      ]
+      "DocumentGroups": []
     }
   ]
 }
