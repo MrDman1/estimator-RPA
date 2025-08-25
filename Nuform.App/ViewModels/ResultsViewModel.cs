@@ -10,19 +10,20 @@ using Nuform.Core.Services;
 using Nuform.App.Models;
 using Nuform.App.Services;
 using Nuform.App.Views;
+using VmEstimateState = Nuform.App.ViewModels.EstimateState;
 
 namespace Nuform.App.ViewModels
 {
     public sealed class ResultsViewModel : INotifyPropertyChanged
     {
-        public EstimateState State { get; }
+        public VmEstimateState State { get; }
         private readonly CatalogService _catalog = new();
         private bool _catalogError;
 
         private decimal _extrasPercent;
         private string _extrasPercentText = "5";
 
-        public ResultsViewModel(EstimateState state)
+        public ResultsViewModel(VmEstimateState state)
         {
             State = state ?? throw new ArgumentNullException(nameof(state));
 

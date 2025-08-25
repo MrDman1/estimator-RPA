@@ -4,23 +4,25 @@ using System.Windows;
 using System.Windows.Controls;
 using Nuform.Core;
 using Nuform.Core.Domain;
-using Nuform.Core.LegacyCompat;
 using Nuform.App.ViewModels;
 using VmEstimateState = Nuform.App.ViewModels.EstimateState;
+using DomainCeilingOrientation = Nuform.Core.Domain.CeilingOrientation;
+using DomainOpeningTreatment   = Nuform.Core.Domain.OpeningTreatment;
+using DomainNuformColor        = Nuform.Core.Domain.NuformColor;
 
 namespace Nuform.App
 {
     public partial class IntakePage : Page
     {
         public static double[] PanelWidths { get; } = new[] { 12.0, 18.0 };
-        public static CeilingOrientation[] CeilingOrientations { get; } =
-            (CeilingOrientation[])System.Enum.GetValues(typeof(CeilingOrientation));
+        public static DomainCeilingOrientation[] CeilingOrientations { get; } =
+            (DomainCeilingOrientation[])System.Enum.GetValues(typeof(DomainCeilingOrientation));
 
-        public static NuformColor[] PanelColors { get; } =
-            (NuformColor[])System.Enum.GetValues(typeof(NuformColor));
+        public static DomainNuformColor[] PanelColors { get; } =
+            (DomainNuformColor[])System.Enum.GetValues(typeof(DomainNuformColor));
 
-        public static OpeningTreatment[] OpeningTreatments { get; } =
-            (OpeningTreatment[])System.Enum.GetValues(typeof(OpeningTreatment));
+        public static DomainOpeningTreatment[] OpeningTreatments { get; } =
+            (DomainOpeningTreatment[])System.Enum.GetValues(typeof(DomainOpeningTreatment));
 
         private ObservableCollection<Room> Rooms { get; } = new();
         private ObservableCollection<OpeningInput> Openings { get; } = new();
