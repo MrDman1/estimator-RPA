@@ -81,78 +81,111 @@ public static class BomService
             }
         }
 
-        // J Trim
-        if (input.Trims.JTrimEnabled && result.Trims.JTrimLF > 0)
+        // Trim LF aggregation
+        var wallColor = PanelCodeResolver.ParseColor(input.WallPanelColor);
+        var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
+        var wallAnyPanelOver12 = (double)input.WallPanelLengthFt > 12;
+        var ceilingAnyPanelOver12 = (double)input.CeilingPanelLengthFt > 12;
+
+        var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
+        var ceilingTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
+
+        double wallPerimeter = input.Mode == "ROOM" ? 2 * (input.Length + input.Width) : input.Length;
+        double openingsButtPerimeter = 0;
+        double openingsWrappedPerimeter = 0;
+        foreach (var op in input.Openings)
         {
-            var j = catalog.FindByCategoryAndLength("BRIGHT WHITE", "J", 12);
-            if (j == null)
-            {
-                missing = true;
-                Console.Error.WriteLine("Missing J Trim specification");
-            }
-            else
-            {
-                var packs = Math.Ceiling(result.Trims.JTrimLF / (j.PackPieces * j.LengthFt));
-                Add(j, (decimal)packs);
-            }
+            var per = 2 * (op.Width + op.Height) * op.Count;
+            if (op.Treatment == OpeningTreatment.WRAPPED) openingsWrappedPerimeter += per;
+            else openingsButtPerimeter += per;
         }
 
-        // Inside corners
-        if (result.InsideCorners > 0)
+        if (input.Trims.JTrimEnabled)
         {
-            var ic = catalog.FindByCategoryAndLength("BRIGHT WHITE", "CornerInside", 12);
-            if (ic == null)
-            {
-                missing = true;
-                Console.Error.WriteLine("Missing Inside Corner specification");
-            }
-            else
-            {
-                var lf = result.InsideCorners * input.Height;
-                var packs = Math.Ceiling(lf / (ic.PackPieces * ic.LengthFt));
-                Add(ic, (decimal)packs);
-            }
+            AddLF(wallTrimLF, (TrimKind.J, wallColor), wallPerimeter);
+            AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsButtPerimeter);
+            AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsWrappedPerimeter);
+            AddLF(wallTrimLF, (TrimKind.OutsideCorner, wallColor), openingsWrappedPerimeter);
         }
 
-        // Ceiling transition trims
-        if (result.Trims.CeilingTransition != null && result.Trims.CeilingTrimLF > 0)
+        var insideCorners = CalcService.ComputeInsideCorners(input);
+        if (insideCorners > 0)
+            AddLF(wallTrimLF, (TrimKind.InsideCorner, wallColor), insideCorners * input.Height);
+
+        if (result.Trims.CeilingTransition != null)
         {
+            var lf = wallPerimeter;
             switch (result.Trims.CeilingTransition)
             {
                 case "cove":
-                    var cv = catalog.FindByCategoryAndLength("BRIGHT WHITE", "Cove", 12);
-                    if (cv == null)
-                    {
-                        missing = true;
-                        Console.Error.WriteLine("Missing Cove Trim specification");
-                    }
-                    else
-                    {
-                        var packs = Math.Ceiling(result.Trims.CeilingTrimLF / (cv.PackPieces * cv.LengthFt));
-                        Add(cv, (decimal)packs);
-                    }
+                    AddLF(ceilingTrimLF, (TrimKind.Cove, ceilingColor), lf);
                     break;
                 case "crown-base":
-                    var baseSpec = catalog.FindByCategoryAndLength("NUFORM WHITE", "CrownBaseBase", 16);
-                    var capSpec = catalog.FindByCategoryAndLength("NUFORM WHITE", "CrownBaseCap", 16);
-                    if (baseSpec == null || capSpec == null)
-                    {
-                        missing = true;
-                        if (baseSpec == null) Console.Error.WriteLine("Missing Crown/Base base specification");
-                        if (capSpec == null) Console.Error.WriteLine("Missing Crown/Base cap specification");
-                    }
-                    else
-                    {
-                        var packs = Math.Ceiling(result.Trims.CeilingTrimLF / (baseSpec.PackPieces * baseSpec.LengthFt));
-                        Add(baseSpec, (decimal)packs);
-                        Add(capSpec, (decimal)packs);
-                    }
+                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseBase, ceilingColor), lf);
+                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseCap, ceilingColor), lf);
                     break;
+                case "f-trim":
+                    AddLF(ceilingTrimLF, (TrimKind.Transition, ceilingColor), lf);
+                    break;
+            }
+        }
+
+        foreach (var kv in wallTrimLF)
+        {
+            var kind = kv.Key.Item1; var color = kv.Key.Item2; var lf = kv.Value;
+            var lenFt = TrimPolicy.DecideTrimLengthFeet(kind, wallAnyPanelOver12, lf, _ => TrimPolicy.PiecesPerPackage[kind]);
+            var colorName = PanelCodeResolver.ColorName(color);
+            var spec = catalog.FindByCategoryAndLength(colorName, CategoryFor(kind), lenFt);
+            if (spec != null && Math.Abs(spec.LengthFt - lenFt) > 0.01)
+                spec = null;
+            if (spec == null)
+            {
+                spec = catalog.FindByCategoryAndLength("BRIGHT WHITE", CategoryFor(kind), lenFt);
+                if (spec != null && Math.Abs(spec.LengthFt - lenFt) > 0.01)
+                    spec = null;
+            }
+            if (spec == null)
+            {
+                missing = true;
+                Console.Error.WriteLine($"Missing {kind} specification");
+            }
+            else
+            {
+                var packs = Math.Ceiling(lf / (spec.PackPieces * lenFt));
+                Add(spec, (decimal)packs);
+            }
+        }
+
+        foreach (var kv in ceilingTrimLF)
+        {
+            var kind = kv.Key.Item1; var color = kv.Key.Item2; var lf = kv.Value;
+            var lenFt = TrimPolicy.DecideTrimLengthFeet(kind, ceilingAnyPanelOver12, lf, _ => TrimPolicy.PiecesPerPackage[kind]);
+            var colorName = PanelCodeResolver.ColorName(color);
+            var spec = catalog.FindByCategoryAndLength(colorName, CategoryFor(kind), lenFt);
+            if (spec != null && Math.Abs(spec.LengthFt - lenFt) > 0.01)
+                spec = null;
+            if (spec == null)
+            {
+                spec = catalog.FindByCategoryAndLength("BRIGHT WHITE", CategoryFor(kind), lenFt);
+                if (spec != null && Math.Abs(spec.LengthFt - lenFt) > 0.01)
+                    spec = null;
+            }
+            if (spec == null)
+            {
+                missing = true;
+                Console.Error.WriteLine($"Missing {kind} specification");
+            }
+            else
+            {
+                var packs = Math.Ceiling(lf / (spec.PackPieces * lenFt));
+                Add(spec, (decimal)packs);
             }
         }
 
         // Hardware
-        decimal trimLfTotal = (decimal)result.Trims.JTrimLF + (decimal)result.Trims.CeilingTrimLF + result.InsideCorners * (decimal)input.Height;
+        decimal trimLfTotal = 0m;
+        foreach (var kv in wallTrimLF) trimLfTotal += (decimal)kv.Value;
+        foreach (var kv in ceilingTrimLF) trimLfTotal += (decimal)kv.Value;
 
         if (input.IncludeWallScrews)
         {
@@ -187,6 +220,28 @@ public static class BomService
 
         return list;
     }
+
+    private static void AddLF(Dictionary<(TrimKind, NuformColor), double> map, (TrimKind, NuformColor) key, double lf)
+    {
+        if (lf <= 0) return;
+        map.TryGetValue(key, out var cur);
+        map[key] = cur + lf;
+    }
+
+    private static string CategoryFor(TrimKind kind) => kind switch
+    {
+        TrimKind.J => "J",
+        TrimKind.InsideCorner => "CornerInside",
+        TrimKind.OutsideCorner => "CornerOutside",
+        TrimKind.Transition => "F",
+        TrimKind.DripEdge => "DripEdge",
+        TrimKind.Cove => "Cove",
+        TrimKind.CrownBaseBase => "CrownBaseBase",
+        TrimKind.CrownBaseCap => "CrownBaseCap",
+        TrimKind.H => "H",
+        TrimKind.F => "F",
+        _ => "J"
+    };
 
     public static int CalcScrewPackages(decimal panelLf, decimal trimLf, double divisor)
     {
