@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Win32;
 using Nuform.Core.Domain;
 using Nuform.Core.Services;
 using Nuform.App.Models;
@@ -39,10 +40,19 @@ namespace Nuform.App.ViewModels
 
             ExportPdfCommand = new RelayCommand(_ =>
             {
-                var file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                                        $"estimate_parts_{DateTime.Now:yyyyMMdd_HHmm}.pdf");
-                PdfExportService.ExportBom(file, BillOfMaterials, "Estimate Results");
-                MessageBox.Show($"PDF saved:\n{file}", "Export PDF");
+                var dlg = new SaveFileDialog
+                {
+                    Title = "Save Estimate PDF",
+                    Filter = "PDF|*.pdf",
+                    FileName = $"estimate_parts_{DateTime.Now:yyyyMMdd_HHmm}.pdf",
+                    AddExtension = true,
+                    OverwritePrompt = true
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    PdfExportService.ExportBom(dlg.FileName, BillOfMaterials, "Estimate Results");
+                    MessageBox.Show($"PDF saved:\n{dlg.FileName}", "Export PDF");
+                }
             });
 
             ExportCsvCommand = new RelayCommand(_ => { });
@@ -71,7 +81,29 @@ namespace Nuform.App.ViewModels
                 System.Windows.Application.Current.MainWindow.Content = new Nuform.App.IntakePage();
             });
 
-            FinishCommand = new RelayCommand(_ => { });
+            ResetCommand = new RelayCommand(_ =>
+            {
+                State.Reset();
+                var intake = new Nuform.App.IntakePage();
+
+                var mainWindow = System.Windows.Application.Current.MainWindow as Nuform.App.MainWindow;
+                var frame = mainWindow?.MainFrame;
+                if (frame != null)
+                {
+                    frame.Navigate(intake);
+                    return;
+                }
+
+                if (System.Windows.Application.Current.MainWindow is System.Windows.Navigation.NavigationWindow nav)
+                {
+                    nav.Navigate(intake);
+                    return;
+                }
+
+                System.Windows.Application.Current.MainWindow.Content = intake;
+            });
+
+            FinishCommand = new RelayCommand(_ => System.Windows.Application.Current.Shutdown());
 
             State.Updated += Recalculate;
             Recalculate();
@@ -119,6 +151,7 @@ namespace Nuform.App.ViewModels
         public ICommand ExportPdfCommand { get; }
         public ICommand ExportCsvCommand { get; }
         public ICommand BackCommand { get; }
+        public ICommand ResetCommand { get; }
         public ICommand FinishCommand { get; }
 
         private void Recalculate()

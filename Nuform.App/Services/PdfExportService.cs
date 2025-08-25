@@ -144,12 +144,14 @@ namespace Nuform.App.Services
             int    lines = MaxWrapLines(gfx, font, cells, col);
             double rowH  = lines * lineH + 6;
             var pen = new XPen(XColors.LightGray, 0.5);
+            double textHeight = lines * lineH;
+            double offset = (rowH - textHeight) / 2;
 
             double x = ctx.Left;
             for (int i = 0; i < col.Length; i++)
             {
                 gfx.DrawRectangle(pen, x, y, col[i], rowH);
-                DrawWrapped(gfx, font, cells[i] ?? "", x + 4, y + 3, col[i] - 8, lineH);
+                DrawWrapped(gfx, font, cells[i] ?? "", x + 4, y + offset, col[i] - 8, lineH);
                 x += col[i];
             }
             y += rowH;

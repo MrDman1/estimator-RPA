@@ -9,6 +9,13 @@ namespace Nuform.App.ViewModels
         public CalcEstimateResult Result { get; set; } = new();
         public event Action? Updated;
         public void RaiseUpdated() => Updated?.Invoke();
+
+        public void Reset()
+        {
+            Input = new BuildingInput();
+            Result = new CalcEstimateResult();
+            RaiseUpdated();
+        }
     }
 }
 
