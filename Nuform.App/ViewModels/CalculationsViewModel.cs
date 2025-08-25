@@ -4,6 +4,10 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using Nuform.Core.Domain;
+using VmEstimateState = Nuform.App.ViewModels.EstimateState;
+using DomainOpeningTreatment = Nuform.Core.Domain.OpeningTreatment;
+using DomainCeilingOrientation = Nuform.Core.Domain.CeilingOrientation;
+using DomainNuformColor = Nuform.Core.Domain.NuformColor;
 
 namespace Nuform.App.ViewModels;
 
@@ -13,12 +17,12 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
     private void OnPropertyChanged(string? n = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
 
-    private readonly EstimateState _state;
+    private readonly VmEstimateState _state;
     private CalcEstimateResult _last;
 
     public string CalculationsText { get; private set; } = string.Empty;
 
-    public CalculationsViewModel(EstimateState state)
+    public CalculationsViewModel(VmEstimateState state)
     {
         _state = state;
         _last = CalcService.CalcEstimate(_state.Input);
@@ -35,10 +39,10 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         var W = (decimal)input.Width;
         var perim = input.Mode == "ROOM" ? 2m * (L + W) : L;
 
-        double openingsWidthLF = input.Openings.Where(o => o.Treatment == OpeningTreatment.BUTT)
+        double openingsWidthLF = input.Openings.Where(o => o.Treatment == DomainOpeningTreatment.BUTT)
             .Sum(o => o.Width * o.Count);
         double panelWidthFt = input.WallPanelWidthInches == 18 ? 1.5 : 1.0;
-        double headerLFAdd = input.Openings.Where(o => o.Treatment == OpeningTreatment.BUTT)
+        double headerLFAdd = input.Openings.Where(o => o.Treatment == DomainOpeningTreatment.BUTT)
             .Sum(o =>
             {
                 double headerAndSill = Math.Max(0, o.HeaderHeightFt) + Math.Max(0, o.SillHeightFt);
@@ -78,7 +82,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         foreach (var op in input.Openings)
         {
             var per = 2 * (op.Width + op.Height) * op.Count;
-            if (op.Treatment == OpeningTreatment.WRAPPED) openingsWrappedPerimeter += per;
+            if (op.Treatment == DomainOpeningTreatment.WRAPPED) openingsWrappedPerimeter += per;
             else openingsButtPerimeter += per;
         }
 
@@ -87,8 +91,8 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         var wallAnyPanelOver12 = (double)input.WallPanelLengthFt > 12;
         var ceilingAnyPanelOver12 = (double)input.CeilingPanelLengthFt > 12;
 
-        var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
-        var ceilingTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
+        var wallTrimLF = new Dictionary<(TrimKind, DomainNuformColor), double>();
+        var ceilingTrimLF = new Dictionary<(TrimKind, DomainNuformColor), double>();
 
         // Wrapped openings: J + Outside Corner
         AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsWrappedPerimeter);
@@ -143,7 +147,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         {
             double cPanelWidthFt = input.CeilingPanelWidthInches == 18 ? 1.5 : 1.0;
             int ceilingLenFt = (int)input.CeilingPanelLengthFt;
-            if (input.CeilingOrientation == CeilingOrientation.Widthwise)
+            if (input.CeilingOrientation == DomainCeilingOrientation.Widthwise)
             {
                 int rows = (int)Math.Ceiling(input.Length / cPanelWidthFt);
                 int panelsWidthwise = rows;
@@ -175,7 +179,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CalculationsText));
     }
 
-    private static void AddLF(Dictionary<(TrimKind, NuformColor), double> map, (TrimKind, NuformColor) key, double lf)
+    private static void AddLF(Dictionary<(TrimKind, DomainNuformColor), double> map, (TrimKind, DomainNuformColor) key, double lf)
     {
         if (lf <= 0) return;
         map.TryGetValue(key, out var cur);

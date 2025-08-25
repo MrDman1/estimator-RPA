@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Nuform.Core;
-using Nuform.Core.LegacyCompat;
 
 namespace Nuform.App;
 
