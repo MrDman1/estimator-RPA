@@ -49,6 +49,16 @@
             </StackPanel>
         </GroupBox>
 
+        <GroupBox Header="Hardware &amp; Accessories" Margin="0 0 0 10">
+            <StackPanel>
+                <CheckBox Content="Include Wall Screws (Concrete)" IsChecked="{Binding Input.IncludeWallScrews, Mode=TwoWay}" />
+                <CheckBox Content="Include Ceiling Screws (Stainless)" IsChecked="{Binding Input.IncludeCeilingScrews, Mode=TwoWay}" />
+                <CheckBox Content="Include Plugs" IsChecked="{Binding Input.IncludePlugs, Mode=TwoWay}" />
+                <CheckBox Content="Include Spacers" IsChecked="{Binding Input.IncludeSpacers, Mode=TwoWay}" />
+                <CheckBox Content="Include Expansion Tool" IsChecked="{Binding Input.IncludeExpansionTool, Mode=TwoWay}" />
+            </StackPanel>
+        </GroupBox>
+
         <Button Content="Next" HorizontalAlignment="Right" Width="80" Click="Next_Click"/>
     </StackPanel>
 </Page>

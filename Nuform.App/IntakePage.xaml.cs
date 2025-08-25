@@ -28,6 +28,7 @@ namespace Nuform.App
             InitializeComponent();
             RoomsGrid.ItemsSource = Rooms;
             OpeningsGrid.ItemsSource = Openings;
+            DataContext = _state;
         }
 
         private void Next_Click(object sender, RoutedEventArgs e)
@@ -64,7 +65,12 @@ namespace Nuform.App
                 CeilingPanelSeries = "R3",
                 CeilingPanelWidthInches = (int)room.PanelWidthInches,
                 CeilingPanelLengthFt = (decimal)room.CeilingPanelLengthFt,
-                CeilingPanelColor = "NUFORM WHITE"
+                CeilingPanelColor = "NUFORM WHITE",
+                IncludeWallScrews = _state.Input.IncludeWallScrews,
+                IncludeCeilingScrews = _state.Input.IncludeCeilingScrews,
+                IncludePlugs = _state.Input.IncludePlugs,
+                IncludeSpacers = _state.Input.IncludeSpacers,
+                IncludeExpansionTool = _state.Input.IncludeExpansionTool
             };
 
             _state.Input = input;

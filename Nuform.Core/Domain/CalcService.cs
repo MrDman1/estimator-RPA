@@ -39,6 +39,11 @@ public class TrimSelections
 
         // New panel selection fields
         public bool IncludeCeilingPanels { get; set; } = false;
+        public bool IncludeWallScrews { get; set; } = true;
+        public bool IncludeCeilingScrews { get; set; } = true;
+        public bool IncludePlugs { get; set; } = true;
+        public bool IncludeSpacers { get; set; } = true;
+        public bool IncludeExpansionTool { get; set; } = true;
 
         // Selected wall panel spec
         public string WallPanelSeries { get; set; } = "R3";       // "R3" | "Mono" | "Pro18"

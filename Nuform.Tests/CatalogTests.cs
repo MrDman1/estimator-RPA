@@ -49,4 +49,22 @@ public class CatalogTests
         Assert.Equal("GEL1TJCBBW", j.PartNumber);
         Assert.Contains("J Trim", j.Name);
     }
+
+    [Fact]
+    public void FindPanelReturnsNextLonger()
+    {
+        var catalog = new CatalogService();
+        var spec = catalog.FindPanel("R3", "NUFORM WHITE", 13);
+        Assert.NotNull(spec);
+        Assert.True(spec!.LengthFt >= 13);
+    }
+
+    [Fact]
+    public void FindPanelReturnsClosestWhenNoLonger()
+    {
+        var catalog = new CatalogService();
+        var spec = catalog.FindPanel("R3", "NUFORM WHITE", 21);
+        Assert.NotNull(spec);
+        Assert.Equal(20, (int)spec!.LengthFt);
+    }
 }

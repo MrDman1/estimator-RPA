@@ -124,18 +124,17 @@ namespace Nuform.App.Services
         private static void DrawHeader(XGraphics gfx, XFont font, PageContext ctx, double[] col, ref double y)
         {
             string[] headers = { "Part #", "Name", "Suggested", "Change", "Final", "Unit", "Category" };
-            double rowH = MeasureLineHeight(gfx, font) + 8;
-
-            gfx.DrawRectangle(XBrushes.LightGray, ctx.Left, y - 2, ctx.ContentWidth, rowH);
+            double rowH = MeasureLineHeight(gfx, font) + 6;
+            var pen = new XPen(XColors.LightGray, 0.5);
 
             double x = ctx.Left;
             for (int i = 0; i < col.Length; i++)
             {
-                gfx.DrawString(headers[i], font, XBrushes.Black, new XPoint(x + 2, y + 2));
+                gfx.DrawRectangle(pen, XBrushes.LightGray, x, y, col[i], rowH);
+                gfx.DrawString(headers[i], font, XBrushes.Black,
+                    new XRect(x + 2, y + 2, col[i] - 4, rowH - 4), XStringFormats.TopLeft);
                 x += col[i];
             }
-
-            gfx.DrawLine(XPens.LightGray, ctx.Left, y + rowH, ctx.Right, y + rowH);
             y += rowH;
         }
 
@@ -144,14 +143,15 @@ namespace Nuform.App.Services
             double lineH = MeasureLineHeight(gfx, font);
             int    lines = MaxWrapLines(gfx, font, cells, col);
             double rowH  = lines * lineH + 6;
+            var pen = new XPen(XColors.LightGray, 0.5);
 
             double x = ctx.Left;
             for (int i = 0; i < col.Length; i++)
             {
-                DrawWrapped(gfx, font, cells[i] ?? "", x + 2, y + 3, col[i] - 4, lineH);
+                gfx.DrawRectangle(pen, x, y, col[i], rowH);
+                DrawWrapped(gfx, font, cells[i] ?? "", x + 4, y + 3, col[i] - 8, lineH);
                 x += col[i];
             }
-            gfx.DrawLine(XPens.LightGray, ctx.Left, y + rowH, ctx.Right, y + rowH);
             y += rowH;
         }
 
