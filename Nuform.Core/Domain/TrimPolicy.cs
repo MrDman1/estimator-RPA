@@ -58,7 +58,7 @@ public static class TrimPolicy
         var waste12 = packs12 == 0 ? 0.0 : (packs12 * pcs12 * 12.0 - requiredLF) / (packs12 * pcs12 * 12.0);
 
         // Rule: if 16′ waste > 55% AND 12′ waste ≤ 40%, use 12′ (except corners – already handled).
-        if (waste16 > 0.55 && waste12 <= 0.40 && kind is not TrimKind.InsideCorner and not TrimKind.OutsideCorner)
+        if (waste16 > 0.60 && waste12 <= waste16 && kind is not TrimKind.InsideCorner and not TrimKind.OutsideCorner)
             return 12;
 
         return 16;
