@@ -1,12 +1,37 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|c:\\users\\dbeland\\onedrive - nuform building technologies inc\\documents\\github\\estimator-rpa\\nuform.app\\services\\pdfexportservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|solutionrelative:nuform.app\\services\\pdfexportservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "PdfExportService.cs",
+              "DocumentMoniker": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\Services\\PdfExportService.cs",
+              "RelativeDocumentMoniker": "Nuform.App\\Services\\PdfExportService.cs",
+              "ToolTip": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\Services\\PdfExportService.cs",
+              "RelativeToolTip": "Nuform.App\\Services\\PdfExportService.cs",
+              "ViewState": "AgIAADAAAAAAAAAAAAAhwE4AAAA0AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-26T18:33:32.535Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
     }
   ]
 }
