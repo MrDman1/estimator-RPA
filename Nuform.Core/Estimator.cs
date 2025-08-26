@@ -199,8 +199,10 @@ public class Estimator
             int qty; double panelLen;
             if (room.CeilingOrientation == CeilingOrientation.Widthwise)
             {
-                qty = (int)Math.Ceiling(room.LengthFt / panelWidthFt * (1 + input.Options.Contingency));
-                panelLen = room.WidthFt;
+                var panelsPerRow = (int)Math.Ceiling(room.WidthFt / room.CeilingPanelLengthFt);
+                var rows = (int)Math.Ceiling(room.LengthFt / panelWidthFt);
+                qty = (int)Math.Ceiling(panelsPerRow * rows * (1 + input.Options.Contingency));
+                panelLen = room.CeilingPanelLengthFt;
             }
             else
             {

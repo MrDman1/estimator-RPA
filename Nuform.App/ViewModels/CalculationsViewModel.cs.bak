@@ -142,31 +142,27 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         }
 
         sb.AppendLine();
-        
         sb.AppendLine("CEILING PANELS");
         if (input.IncludeCeilingPanels)
         {
             double cPanelWidthFt = input.CeilingPanelWidthInches == 18 ? 1.5 : 1.0;
-            double ceilingLenFt = (double)input.CeilingPanelLengthFt;
-
+            int ceilingLenFt = (int)input.CeilingPanelLengthFt;
             if (input.CeilingOrientation == DomainCeilingOrientation.Widthwise)
             {
-                // Panels run across the width; rows progress along the length.
-                int panelsPerRow = (int)Math.Ceiling(input.Width / ceilingLenFt);
-                int rows         = (int)Math.Ceiling(input.Length / cPanelWidthFt);
-                int total        = rows * panelsPerRow;
-                sb.AppendLine($"Widthwise: panels/row = ceil(W/{ceilingLenFt:F1}) = {panelsPerRow}; rows = ceil(L/{cPanelWidthFt:F1}) = {rows}; total = {total}");
+                int rows = (int)Math.Ceiling(input.Length / cPanelWidthFt);
+                int panelsWidthwise = rows;
+                sb.AppendLine($"Widthwise: rows = ceil(L/{cPanelWidthFt:F1}) = {rows}; panels = rows = {panelsWidthwise}");
             }
             else
             {
-                // Panels run along the length; rows progress across the width.
-                int panelsPerRow = (int)Math.Ceiling(input.Length / ceilingLenFt);
-                int rows         = (int)Math.Ceiling(input.Width / cPanelWidthFt);
-                int total        = rows * panelsPerRow;
-                sb.AppendLine($"Lengthwise: panels/row = ceil(L/{ceilingLenFt:F1}) = {panelsPerRow}; rows = ceil(W/{cPanelWidthFt:F1}) = {rows}; total = {total}");
+                int rows = (int)Math.Ceiling(input.Width / cPanelWidthFt);
+                int panelsPerRow = (int)Math.Ceiling(input.Length / (double)ceilingLenFt);
+                int panelsLengthwise = rows * panelsPerRow;
+                sb.AppendLine($"Lengthwise: rows = ceil(W/{cPanelWidthFt:F1}) = {rows}; panels/row = ceil(L/{ceilingLenFt}) = {panelsPerRow}; total = rows×panels/row = {panelsLengthwise}");
             }
         }
-    foreach (var kv in ceilingTrimLF)
+
+        foreach (var kv in ceilingTrimLF)
         {
             var kind = kv.Key.Item1; var color = kv.Key.Item2; var lf = kv.Value;
             var anyOver12 = ceilingAnyPanelOver12;

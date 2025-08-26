@@ -27,85 +27,100 @@ namespace Nuform.App.Services
             // page state
             var page = NewPage(doc);
             var gfx  = XGraphics.FromPdfPage(page);
-            var ctx  = CreatePageContext(page, margin);
+            var area = ContentArea(page, margin);
+            double x = area.Left, y = area.Top;
 
-            ScaleToFit(col, ctx.ContentWidth);
+            // title
+            gfx.DrawString(title ?? "Bill of Materials", fontTitle, XBrushes.Black, new XPoint(x, y));
+            y += 24;
 
-            double y = ctx.Top;
+            // compute column scale to fit width
+            double totalCol = 0; foreach (var w in col) totalCol += w;
+            double scale = (area.ContentWidth) / totalCol;
+            for (int i = 0; i < col.Length; i++) col[i] *= scale;
 
-            DrawTitle(gfx, fontTitle, title, ctx.Left, ref y);
-            DrawHeader(gfx, fontHeader, ctx, col, ref y);
-
-            foreach (var r in rows)
+            // header drawing function
+            void DrawHeader()
             {
-                var cells = new[]
+                double hx = x;
+                string[] headers = { "Part #", "Name", "Suggested", "Change", "Final", "Unit", "Category" };
+                double rowH = 18;
+                // background
+                gfx.DrawRectangle(XPens.Black, XBrushes.LightGray, area.Left, y, area.ContentWidth, rowH);
+                for (int i = 0; i < headers.Length; i++)
                 {
-                    r.PartNumber ?? "",
-                    r.Name ?? "",
-                    r.SuggestedQty.ToString("N2"),
-                    string.IsNullOrWhiteSpace(r.Change) ? "0" : r.Change,
-                    r.FinalQty.ToString("N2"),
-                    r.Unit ?? "",
-                    r.Category ?? ""
-                };
-
-                double lineH  = MeasureLineHeight(gfx, fontCell);
-                int    lines  = MaxWrapLines(gfx, fontCell, cells, col);
-                double rowH   = lines * lineH + 6; // padding
-
-                // page break?
-                if (y + rowH > ctx.Bottom)
-                {
-                    gfx.Dispose();
-                    page = NewPage(doc);
-                    gfx  = XGraphics.FromPdfPage(page);
-                    ctx  = CreatePageContext(page, margin);
-                    y    = ctx.Top;
-
-                    DrawTitle(gfx, fontTitle, title, ctx.Left, ref y);
-                    DrawHeader(gfx, fontHeader, ctx, col, ref y);
+                    gfx.DrawString(headers[i], fontHeader, XBrushes.Black, new XPoint(hx + 4, y + 13));
+                    hx += col[i];
+                    // vertical grid line
+                    gfx.DrawLine(XPens.Black, area.Left + (hx - x), y, area.Left + (hx - x), y + rowH);
                 }
-
-                DrawRow(gfx, fontCell, ctx, col, cells, ref y);
+                // bottom line
+                gfx.DrawLine(XPens.Black, area.Left, y + rowH, area.Left + area.ContentWidth, y + rowH);
+                y += rowH;
             }
 
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            gfx.Dispose();
-            doc.Save(path);
-        }
+            DrawHeader();
 
-        // ===== helpers =====
-
-        private struct PageContext
-        {
-            public double Left, Top, Right, Bottom, ContentWidth;
-        }
-
-        private static double MeasureLineHeight(XGraphics gfx, XFont font)
-            => gfx.MeasureString("Ag", font).Height + 2; // small padding
-
-        private static int MaxWrapLines(XGraphics gfx, XFont font, string[] cells, double[] widths)
-        {
-            int max = 1;
-            for (int i = 0; i < cells.Length; i++)
-                max = Math.Max(max, WrapCount(gfx, font, cells[i] ?? "", widths[i]));
-            return max;
-        }
-
-        private static PageContext CreatePageContext(PdfPage page, double margin)
-        {
-            var left = margin;
-            var right = page.Width - margin;
-            var top = margin;
-            var bottom = page.Height - margin;
-            return new PageContext
+            foreach (var row in rows)
             {
-                Left = left,
-                Right = right,
-                Top = top,
-                Bottom = bottom,
-                ContentWidth = right - left
-            };
+                // Compute row height based on wrapped text in columns 0..6
+                double[] heights = new double[col.Length];
+                string[] cells = {
+                    row.PartNumber ?? "",
+                    row.Name ?? "",
+                    (row.SuggestedQty ?? "").ToString(),
+                    (row.Change ?? ""),
+                    (row.FinalQty ?? "").ToString(),
+                    row.Unit ?? "",
+                    row.Category ?? ""
+                };
+
+                for (int i = 0; i < col.Length; i++)
+                {
+                    heights[i] = MeasureWrappedHeight(gfx, fontCell, cells[i], col[i] - 8); // padding 4 left/right
+                }
+                double rowH = Math.Max(16, Max(heights));
+
+                // page break if needed (leave space for next row and header)
+                if (y + rowH > area.Bottom - 24)
+                {
+                    page = NewPage(doc);
+                    gfx.Dispose();
+                    gfx = XGraphics.FromPdfPage(page);
+                    area = ContentArea(page, margin);
+                    x = area.Left; y = area.Top;
+                    gfx.DrawString(title ?? "Bill of Materials", fontTitle, XBrushes.Black, new XPoint(x, y));
+                    y += 24;
+                    DrawHeader();
+                }
+
+                // draw cell borders first (so text is on top, not through lines)
+                double cx = x;
+                for (int i = 0; i < col.Length; i++)
+                {
+                    gfx.DrawRectangle(XPens.Black, cx, y, col[i], rowH);
+                    cx += col[i];
+                }
+
+                // draw text inside cells with padding
+                cx = x;
+                for (int i = 0; i < col.Length; i++)
+                {
+                    DrawWrapped(gfx, fontCell, cells[i], cx + 4, y + 12, col[i] - 8);
+                    cx += col[i];
+                }
+
+                y += rowH;
+            }
+
+            using var fs = File.Create(path);
+            doc.Save(fs);
+        }
+
+        private static (double Left, double Top, double Right, double Bottom, double ContentWidth) ContentArea(PdfPage page, double margin)
+        {
+            double left = margin, top = margin, right = page.Width - margin, bottom = page.Height - margin;
+            return (left, top, right, bottom, right - left);
         }
 
         private static PdfPage NewPage(PdfDocument doc)
@@ -115,84 +130,59 @@ namespace Nuform.App.Services
             return p;
         }
 
-        private static void DrawTitle(XGraphics gfx, XFont font, string title, double x, ref double y)
+        private static double Max(double[] arr)
         {
-            gfx.DrawString(title, font, XBrushes.Black, new XPoint(x, y));
-            y += 24;
+            double m = 0; foreach (var v in arr) if (v > m) m = v; return m;
         }
 
-        private static void DrawHeader(XGraphics gfx, XFont font, PageContext ctx, double[] col, ref double y)
+        private static double MeasureWrappedHeight(XGraphics gfx, XFont font, string text, double maxWidth)
         {
-            string[] headers = { "Part #", "Name", "Suggested", "Change", "Final", "Unit", "Category" };
-            double rowH = MeasureLineHeight(gfx, font) + 6;
-            var pen = new XPen(XColors.LightGray, 0.5);
-
-            double x = ctx.Left;
-            for (int i = 0; i < col.Length; i++)
-            {
-                gfx.DrawRectangle(pen, XBrushes.LightGray, x, y, col[i], rowH);
-                gfx.DrawString(headers[i], font, XBrushes.Black,
-                    new XRect(x + 2, y + 2, col[i] - 4, rowH - 4), XStringFormats.TopLeft);
-                x += col[i];
-            }
-            y += rowH;
-        }
-
-        private static void DrawRow(XGraphics gfx, XFont font, PageContext ctx, double[] col, string[] cells, ref double y)
-        {
-            double lineH = MeasureLineHeight(gfx, font);
-            int    lines = MaxWrapLines(gfx, font, cells, col);
-            double rowH  = lines * lineH + 6;
-            var pen = new XPen(XColors.LightGray, 0.5);
-            double textHeight = lines * lineH;
-            double offset = (rowH - textHeight) / 2;
-
-            double x = ctx.Left;
-            for (int i = 0; i < col.Length; i++)
-            {
-                gfx.DrawRectangle(pen, x, y, col[i], rowH);
-                DrawWrapped(gfx, font, cells[i] ?? "", x + 4, y + offset, col[i] - 8, lineH);
-                x += col[i];
-            }
-            y += rowH;
-        }
-
-        private static void ScaleToFit(double[] widths, double available)
-        {
-            double total = 0; foreach (var w in widths) total += w;
-            if (total <= available) return;
-            double scale = available / total;
-            for (int i = 0; i < widths.Length; i++) widths[i] *= scale;
-        }
-
-        private static int WrapCount(XGraphics gfx, XFont font, string text, double maxWidth)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return 1;
+            if (string.IsNullOrWhiteSpace(text)) return 16;
             var words = text.Split(' ');
-            int lines = 1; string current = "";
+            string line = "";
+            double lineH = gfx.MeasureString("Ay", font).Height + 2;
+            int lines = 1;
             foreach (var w in words)
             {
-                var candidate = current.Length == 0 ? w : current + " " + w;
-                var sz = gfx.MeasureString(candidate, font);
-                if (sz.Width <= maxWidth) current = candidate;
-                else { lines++; current = w; }
+                var candidate = string.IsNullOrEmpty(line) ? w : line + " " + w;
+                if (gfx.MeasureString(candidate, font).Width <= maxWidth)
+                {
+                    line = candidate;
+                }
+                else
+                {
+                    lines++;
+                    line = w;
+                }
             }
-            return Math.Max(1, lines);
+            return Math.Max(16, lines * lineH + 4);
         }
 
-        private static void DrawWrapped(XGraphics gfx, XFont font, string text, double x, double y, double maxWidth, double lineH)
+        private static void DrawWrapped(XGraphics gfx, XFont font, string text, double x, double y, double maxWidth)
         {
             if (string.IsNullOrWhiteSpace(text)) return;
             var words = text.Split(' ');
-            string line = ""; double yy = y;
+            string line = "";
+            double lineH = gfx.MeasureString("Ay", font).Height + 2;
+            double yy = y;
             foreach (var w in words)
             {
-                var candidate = line.Length == 0 ? w : line + " " + w;
-                var sz = gfx.MeasureString(candidate, font);
-                if (sz.Width <= maxWidth) line = candidate;
-                else { gfx.DrawString(line, font, XBrushes.Black, new XPoint(x, yy)); yy += lineH; line = w; }
+                var candidate = string.IsNullOrEmpty(line) ? w : line + " " + w;
+                if (gfx.MeasureString(candidate, font).Width <= maxWidth)
+                {
+                    line = candidate;
+                }
+                else
+                {
+                    gfx.DrawString(line, font, XBrushes.Black, new XPoint(x, yy));
+                    yy += lineH;
+                    line = w;
+                }
             }
-            if (line.Length > 0) gfx.DrawString(line, font, XBrushes.Black, new XPoint(x, yy));
+            if (!string.IsNullOrEmpty(line))
+            {
+                gfx.DrawString(line, font, XBrushes.Black, new XPoint(x, yy));
+            }
         }
     }
 }

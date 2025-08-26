@@ -12,7 +12,7 @@
             <TextBox x:Name="ContBox" Width="50" Text="5"/>
         </StackPanel>
         <TextBlock Text="Rooms" FontWeight="Bold"/>
-        <DataGrid x:Name="RoomsGrid" AutoGenerateColumns="False" ColumnWidth="Auto" MinColumnWidth="100" RowHeaderWidth="0" GridLinesVisibility="All" Height="120" Margin="0 0 0 10">
+        <DataGrid x:Name="RoomsGrid" AutoGenerateColumns="False" Height="120" Margin="0 0 0 10">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="L" Binding="{Binding LengthFt}" />
                 <DataGridTextColumn Header="W" Binding="{Binding WidthFt}" />
