@@ -35,11 +35,13 @@ public class CatalogTests
         var catalog = new CatalogService();
         var input = new BuildingInput
         {
-            Mode = "ROOM",
+            Mode = "WALL",
             Length = 10,
-            Width = 10,
+            Width = 1,
             Height = 12,
             PanelCoverageWidthFt = 1,
+            WallPanelLengthFt = 12m,
+            WallPanelColor = "BRIGHT WHITE",
             Trims = new TrimSelections { JTrimEnabled = true }
         };
         var result = CalcService.CalcEstimate(input);

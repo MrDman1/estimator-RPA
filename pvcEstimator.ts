@@ -71,7 +71,7 @@ export interface Result {
   nsdBuckets?: { RELINE: number; RELINEPRO: number; Specialty: number; Other: number; Shipping: number };
 }
 
-const PANEL_WIDTH_FT = (w: PanelWidth) => (w === 18 ? 1.5 : 1.0);
+const PANEL_WIDTH_FT = (w: PanelWidth) => w / 12;
 const PACK_LF = {
   J: (len: TrimLen) => (len === 12 ? 120 : 160),
   Corner: (len: TrimLen) => (len === 12 ? 60 : 80),
@@ -157,13 +157,15 @@ export function calcEstimate(
   for (const r of rooms) {
     if (!r.ceiling?.include) continue;
     if (r.ceiling.orientation === "widthwise") {
-      const qty = Math.ceil((r.L / panelWidthFt) * (1 + contingency));
+      const across = Math.ceil(r.W / panelWidthFt);
+      const runs = Math.ceil(r.L / (r.ceiling.lengthwisePanelLen ?? r.wallPanelLen));
+      const qty = Math.ceil(across * runs * (1 + contingency));
       ceilingPanelsQty += qty;
-      ceilingPanelLen = Math.max(ceilingPanelLen, r.W);
+      ceilingPanelLen = Math.max(ceilingPanelLen, r.ceiling.lengthwisePanelLen ?? r.wallPanelLen);
     } else {
-      const perRow = Math.ceil(r.W / panelWidthFt);
-      const rows = Math.ceil(r.L / (r.ceiling.lengthwisePanelLen ?? r.wallPanelLen));
-      const qty = Math.ceil(perRow * rows * (1 + contingency));
+      const across = Math.ceil(r.L / panelWidthFt);
+      const runs = Math.ceil(r.W / (r.ceiling.lengthwisePanelLen ?? r.wallPanelLen));
+      const qty = Math.ceil(across * runs * (1 + contingency));
       ceilingPanelsQty += qty;
       ceilingPanelLen = Math.max(ceilingPanelLen, r.ceiling.lengthwisePanelLen ?? r.wallPanelLen);
     }
