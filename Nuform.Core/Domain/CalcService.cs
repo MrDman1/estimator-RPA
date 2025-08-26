@@ -118,7 +118,7 @@ public static class CalcService
         double openingsWrappedPerimeter = 0;
         double openingsWidthLF = 0;
         double headerLFAdd = 0;
-        double panelWidthFt = input.PanelCoverageWidthFt;
+        double panelWidthFt = input.WallPanelWidthInches / 12.0;
         foreach (var op in input.Openings)
         {
             var per = 2 * (op.Width + op.Height) * op.Count;
@@ -143,10 +143,10 @@ public static class CalcService
             }
         }
 
-        double netWallLF = perimeter - openingsWidthLF + headerLFAdd;
+        double netWallLF = Math.Max(0.0, perimeter - openingsWidthLF + headerLFAdd);
         double extraPercent = input.ExtraPercent ?? CalcSettings.DefaultExtraPercent;
         double withExtra = netWallLF * (1 + extraPercent / 100.0);
-        int basePanels = (int)Math.Ceiling(withExtra / panelWidthFt);
+        int basePanels = Math.Max(0, (int)Math.Ceiling(withExtra / panelWidthFt));
         int roundedPanels = RoundPanels(basePanels);
         double overagePercentRounded = roundedPanels == 0 ? 0 :
             (roundedPanels * panelWidthFt - withExtra) / (roundedPanels * panelWidthFt) * 100.0;

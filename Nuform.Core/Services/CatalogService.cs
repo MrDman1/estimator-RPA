@@ -44,18 +44,20 @@ public class CatalogService
 
     public PartSpec? FindByCategoryAndLength(string color, string category, double lengthFt)
     {
+        var norm = PanelCodeResolver.NormalizeColor(color);
         return _parts.Values
             .Where(p => p.Category.Equals(category, StringComparison.OrdinalIgnoreCase)
-                        && p.Color.Equals(color, StringComparison.OrdinalIgnoreCase))
+                        && p.Color.Equals(norm, StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => Math.Abs(p.LengthFt - lengthFt))
             .FirstOrDefault();
     }
 
     public PartSpec? FindPanel(string color, double widthInches, double lengthFt)
     {
+        var norm = PanelCodeResolver.NormalizeColor(color);
         return _parts.Values
             .Where(p => p.Category.Equals("Panel", StringComparison.OrdinalIgnoreCase)
-                        && p.Color.Equals(color, StringComparison.OrdinalIgnoreCase)
+                        && p.Color.Equals(norm, StringComparison.OrdinalIgnoreCase)
                         && Math.Abs(p.LengthFt - lengthFt) < 0.01
                         && p.Description.Contains(((int)widthInches).ToString(), StringComparison.OrdinalIgnoreCase))
             .FirstOrDefault();
@@ -63,7 +65,7 @@ public class CatalogService
 
       public PartSpec ResolvePanelSku(string series, int widthInches, decimal lengthFt, string color)
       {
-          var keyColor = color.ToUpperInvariant();
+          var keyColor = PanelCodeResolver.NormalizeColor(color);
 
           return FindBySeriesWidthLengthColor(series, widthInches, lengthFt, keyColor)
                  ?? throw new InvalidOperationException($"Panel SKU not found for {series} {widthInches}\" {lengthFt}' {color}");
@@ -71,10 +73,11 @@ public class CatalogService
 
       public PartSpec? FindPanel(string series, string color, int lengthFt)
       {
+          var norm = PanelCodeResolver.NormalizeColor(color);
           var candidates = _parts.Values
               .Where(p => p.Category.Equals("Panel", StringComparison.OrdinalIgnoreCase)
                           && p.Description.Contains(series, StringComparison.OrdinalIgnoreCase)
-                          && p.Color.Equals(color, StringComparison.OrdinalIgnoreCase))
+                          && p.Color.Equals(norm, StringComparison.OrdinalIgnoreCase))
               .OrderBy(p => p.LengthFt)
               .ToList();
 
@@ -106,5 +109,23 @@ public class CatalogService
             Math.Abs((decimal)p.LengthFt - lengthFt) < 0.01m &&
             p.Color.Equals(color, StringComparison.OrdinalIgnoreCase)
         );
+    }
+
+    public PartSpec ResolveTrim(string kind, double lengthFt, string color)
+    {
+        var colorName = PanelCodeResolver.NormalizeColor(color);
+        var category = kind switch
+        {
+            "J" => "J",
+            "OutsideCorner" or "OC" => "CornerOutside",
+            "InsideCorner" or "IC" => "CornerInside",
+            "Cove" => "Cove",
+            "F" => "F",
+            "CrownBaseBase" => "CrownBaseBase",
+            "CrownBaseCap" => "CrownBaseCap",
+            _ => kind
+        };
+        var item = FindByCategoryAndLength(colorName, category, lengthFt);
+        return item ?? throw new InvalidOperationException($"Trim SKU not found for {kind} {lengthFt}' {colorName}");
     }
 }

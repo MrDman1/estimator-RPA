@@ -52,22 +52,23 @@ public static class BomService
         decimal roundedCeiling = 0m;
         if (input.IncludeCeilingPanels)
         {
-            decimal panelWidthFt = input.CeilingPanelWidthInches == 18 ? 1.5m : 1.0m;
+            decimal panelWidthFt = input.CeilingPanelWidthInches / 12.0m;
             int panelsNeeded;
-            decimal panelLengthUsed;
+            decimal panelLengthUsed = input.CeilingPanelLengthFt;
+            decimal acrossFt, alongFt;
             if (input.CeilingOrientation == CeilingOrientation.Widthwise)
             {
-                int rows = (int)Math.Ceiling((decimal)input.Length / panelWidthFt);
-                panelsNeeded = rows;
-                panelLengthUsed = (decimal)input.Width;
+                acrossFt = (decimal)input.Width;
+                alongFt = (decimal)input.Length;
             }
             else
             {
-                int rows = (int)Math.Ceiling((decimal)input.Width / panelWidthFt);
-                int perRow = (int)Math.Ceiling((decimal)input.Length / input.CeilingPanelLengthFt);
-                panelsNeeded = rows * perRow;
-                panelLengthUsed = input.CeilingPanelLengthFt;
+                acrossFt = (decimal)input.Length;
+                alongFt = (decimal)input.Width;
             }
+            int acrossPanels = (int)Math.Ceiling(acrossFt / panelWidthFt);
+            int runs = (int)Math.Ceiling(alongFt / input.CeilingPanelLengthFt);
+            panelsNeeded = acrossPanels * runs;
             var extraPercent = (decimal)(input.ExtraPercent ?? CalcSettings.DefaultExtraPercent);
             var withExtra = panelsNeeded * (1m + extraPercent / 100m);
             int baseCeiling = (int)Math.Ceiling(withExtra);
@@ -150,15 +151,7 @@ public static class BomService
             var lenFt = TrimPolicy.DecideTrimLengthFeet(kind, wallAnyPanelOver12, lf, _ => TrimPolicy.PiecesPerPackage[kind]);
             var colorName = PanelCodeResolver.ColorName(color);
             var spec = catalog.FindByCategoryAndLength(colorName, CategoryFor(kind), lenFt);
-            if (spec != null && Math.Abs(spec.LengthFt - lenFt) > 0.01)
-                spec = null;
-            if (spec == null)
-            {
-                spec = catalog.FindByCategoryAndLength("BRIGHT WHITE", CategoryFor(kind), lenFt);
-                if (spec != null && Math.Abs(spec.LengthFt - lenFt) > 0.01)
-                    spec = null;
-            }
-            if (spec == null)
+            if (spec == null || Math.Abs(spec.LengthFt - lenFt) > 0.01)
             {
                 missing = true;
                 Console.Error.WriteLine($"Missing {kind} specification");
@@ -176,15 +169,7 @@ public static class BomService
             var lenFt = TrimPolicy.DecideTrimLengthFeet(kind, ceilingAnyPanelOver12, lf, _ => TrimPolicy.PiecesPerPackage[kind]);
             var colorName = PanelCodeResolver.ColorName(color);
             var spec = catalog.FindByCategoryAndLength(colorName, CategoryFor(kind), lenFt);
-            if (spec != null && Math.Abs(spec.LengthFt - lenFt) > 0.01)
-                spec = null;
-            if (spec == null)
-            {
-                spec = catalog.FindByCategoryAndLength("BRIGHT WHITE", CategoryFor(kind), lenFt);
-                if (spec != null && Math.Abs(spec.LengthFt - lenFt) > 0.01)
-                    spec = null;
-            }
-            if (spec == null)
+            if (spec == null || Math.Abs(spec.LengthFt - lenFt) > 0.01)
             {
                 missing = true;
                 Console.Error.WriteLine($"Missing {kind} specification");

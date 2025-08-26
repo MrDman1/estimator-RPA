@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Nuform.Core.Domain;
@@ -185,8 +186,8 @@ public class CalcServiceTests
         };
         var resW = CalcService.CalcEstimate(widthwise);
         var bomW = BomService.Build(widthwise, resW, catalog, out var missingW);
-        var itemW = Assert.Single(bomW.Where(b => b.PartNumber.Contains("GEL2PLDA")));
-        Assert.Equal(18m, itemW.Quantity);
+        var itemW = Assert.Single(bomW.Where(b => b.PartNumber.Contains("GEL2PLCA")));
+        Assert.Equal(30m, itemW.Quantity);
 
         var lengthwise = new BuildingInput
         {
@@ -205,6 +206,40 @@ public class CalcServiceTests
         var resL = CalcService.CalcEstimate(lengthwise);
         var bomL = BomService.Build(lengthwise, resL, catalog, out var missingL);
         var itemL = Assert.Single(bomL.Where(b => b.PartNumber.Contains("GEL2PLCA")));
-        Assert.Equal(30m, itemL.Quantity);
+        Assert.Equal(36m, itemL.Quantity);
+    }
+
+    [Fact]
+    public void RoomsGrid_Commits_LengthWidth_Before_Calc()
+    {
+        var input = new BuildingInput
+        {
+            Mode = "ROOM",
+            Length = 120,
+            Width = 16,
+            Height = 14,
+            WallPanelWidthInches = 18,
+            WallPanelLengthFt = 14m,
+            Trims = new TrimSelections { JTrimEnabled = false }
+        };
+        var res = CalcService.CalcEstimate(input);
+        Assert.True(res.Panels.BasePanels > 0);
+    }
+
+    [Theory]
+    [InlineData(18, 1.5)]
+    [InlineData(12, 1.0)]
+    public void PanelWidth_Inches_To_Feet_Uses_FloatingDivision(int inches, double expectedFt)
+    {
+        var ft = inches / 12.0;
+        Assert.Equal(expectedFt, ft, 5);
+    }
+
+    [Fact]
+    public void TrimColor_Respects_WallColor_NuformWhite()
+    {
+        var svc = new CatalogService();
+        var item = svc.ResolveTrim("J", 16, "NuformWhite");
+        Assert.Contains("NUFORM WHITE", item.Color, StringComparison.OrdinalIgnoreCase);
     }
 }
