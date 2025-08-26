@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,14 +14,16 @@ using Nuform.Core;
 using Nuform.Core.Domain;
 using Nuform.Core.Services;
 
-// ==== LegacyCompat models used by this file ====
-using AppConfig      = Nuform.Core.LegacyCompat.AppConfig;
+// ===== Use the LegacyCompat shapes that Excel export expects =====
+using AppConfig = Nuform.Core.LegacyCompat.AppConfig;
 using EstimateResult = Nuform.Core.LegacyCompat.EstimateResult;
-using Room           = Nuform.Core.LegacyCompat.Room;
-using CatalogItem    = Nuform.Core.LegacyCompat.CatalogItem;
+using Room = Nuform.Core.LegacyCompat.Room;
+using CatalogItem = Nuform.Core.LegacyCompat.CatalogItem;
+using FileNaming = Nuform.Core.LegacyCompat.FileNaming;
 
-// ==== Force the *new* catalog service to avoid ambiguity ====
-using ServicesCatalogService = Nuform.Core.Services.CatalogService;
+// (Intentionally NOT importing Nuform.Core.Catalog;)
+// (Intentionally NOT using the Services CatalogService here.)
+using LegacyCatalogService = Nuform.Core.LegacyCompat.CatalogService;
 
 namespace Nuform.App;
 
@@ -46,7 +48,7 @@ public static class ExcelService
             ["Date"] = DateTime.Now.ToShortDateString()
         };
 
-        var catalog = CatalogService.Load("RELINE Part List 2025-1-0.pdf");
+        var catalog = Nuform.Core.LegacyCompat.CatalogService.Load("RELINE Part List 2025-1.0.pdf");
         var lineItems = BuildLineItems(result, catalog);
 
         Directory.CreateDirectory(outputDir);
@@ -253,8 +255,12 @@ public static class ExcelService
             ["Date"] = DateTime.Now.ToShortDateString()
         };
 
-        var catalog = CatalogService.Load("RELINE Part List 2025-1-0.pdf");
-        var items = BuildLineItems(result, catalog);
+        // Force the LegacyCompat loader (public, correct return type)
+        IReadOnlyList<CatalogItem> catalogItems =
+            LegacyCatalogService.Load("RELINE Part List 2025-1.0.pdf");
+
+        // Build the export lines from the legacy items
+        var items = BuildLineItems(result, catalogItems);
 
         var calced = CalculateTrims(result.Rooms, result.CeilingPanels.Any());
         int inside = insideCornerOverride ?? 0;

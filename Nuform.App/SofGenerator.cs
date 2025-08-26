@@ -1,27 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using Excel = Microsoft.Office.Interop.Excel;
 
 using Nuform.App.Services;
-using Nuform.App.Models;
-using Nuform.App.Views;
-using Nuform.App.ViewModels;
 
 using Nuform.Core;
 using Nuform.Core.Domain;
 using Nuform.Core.Services;
 
-// ==== LegacyCompat models used by this file ====
-using AppConfig      = Nuform.Core.LegacyCompat.AppConfig;
+// ===== Use the LegacyCompat shapes that SOF export expects =====
+using AppConfig = Nuform.Core.LegacyCompat.AppConfig;
 using EstimateResult = Nuform.Core.LegacyCompat.EstimateResult;
-using Room           = Nuform.Core.LegacyCompat.Room;
-using CatalogItem    = Nuform.Core.LegacyCompat.CatalogItem;
-
-// ==== Force the *new* catalog service to avoid ambiguity ====
-using ServicesCatalogService = Nuform.Core.Services.CatalogService;
+using Room = Nuform.Core.LegacyCompat.Room;
+using CatalogItem = Nuform.Core.LegacyCompat.CatalogItem;
+using FileNaming = Nuform.Core.LegacyCompat.FileNaming;
 
 namespace Nuform.App;
 
@@ -56,7 +50,7 @@ public static class SofGenerator
         // Load catalog information so that unit pricing can be looked up.
         // The catalog path mirrors the default used by the estimator when
         // calculating quantities.
-        var catalog = CatalogService.Load("RELINE Part List 2025-1-0.pdf");
+        var catalog = Nuform.Core.LegacyCompat.CatalogService.Load("RELINE Part List 2025-1.0.pdf");
         var lookup = catalog.ToDictionary(c => c.PartCode, StringComparer.OrdinalIgnoreCase);
 
         static decimal PriceFor(Dictionary<string, CatalogItem> cats, string partCode)

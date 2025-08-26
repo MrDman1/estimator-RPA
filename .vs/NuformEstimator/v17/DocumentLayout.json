@@ -1,12 +1,70 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\dbeland\\AppData\\Local\\Temp\\.vsdbgsrc\\4567c9a89e88c1fabd43192481c2d521a253f1b797e8c6805994561c353384c1\\ListCollectionView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|c:\\users\\dbeland\\onedrive - nuform building technologies inc\\documents\\github\\estimator-rpa\\nuform.app\\excelservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|solutionrelative:nuform.app\\excelservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|c:\\users\\dbeland\\onedrive - nuform building technologies inc\\documents\\github\\estimator-rpa\\nuform.app\\sofgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|solutionrelative:nuform.app\\sofgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "ListCollectionView.cs",
+              "DocumentMoniker": "C:\\Users\\dbeland\\AppData\\Local\\Temp\\.vsdbgsrc\\4567c9a89e88c1fabd43192481c2d521a253f1b797e8c6805994561c353384c1\\ListCollectionView.cs",
+              "RelativeDocumentMoniker": "..\\..\\..\\..\\AppData\\Local\\Temp\\.vsdbgsrc\\4567c9a89e88c1fabd43192481c2d521a253f1b797e8c6805994561c353384c1\\ListCollectionView.cs",
+              "ToolTip": "C:\\Users\\dbeland\\AppData\\Local\\Temp\\.vsdbgsrc\\4567c9a89e88c1fabd43192481c2d521a253f1b797e8c6805994561c353384c1\\ListCollectionView.cs [Read Only]",
+              "RelativeToolTip": "..\\..\\..\\..\\AppData\\Local\\Temp\\.vsdbgsrc\\4567c9a89e88c1fabd43192481c2d521a253f1b797e8c6805994561c353384c1\\ListCollectionView.cs [Read Only]",
+              "ViewState": "AgIAAP8IAAAAAAAAAAAQwBMJAAAnAAAAAQAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-26T16:56:18.905Z",
+              "EditorCaption": " [Read Only]"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ExcelService.cs",
+              "DocumentMoniker": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\ExcelService.cs",
+              "RelativeDocumentMoniker": "Nuform.App\\ExcelService.cs",
+              "ToolTip": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\ExcelService.cs",
+              "RelativeToolTip": "Nuform.App\\ExcelService.cs",
+              "ViewState": "AgIAAPAAAAAAAAAAAAAAAAYBAAA5AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-26T16:53:50.835Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "SofGenerator.cs",
+              "DocumentMoniker": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\SofGenerator.cs",
+              "RelativeDocumentMoniker": "Nuform.App\\SofGenerator.cs",
+              "ToolTip": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\SofGenerator.cs",
+              "RelativeToolTip": "Nuform.App\\SofGenerator.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAAADQAAABkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-26T16:46:55.42Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
     }
   ]
 }
