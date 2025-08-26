@@ -1,3 +1,5 @@
+
+        public ICommand ExportSofCommand { get; }
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -5,6 +7,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Win32;
+using Nuform.Core;
 using Nuform.Core.Domain;
 using Nuform.Core.Services;
 using Nuform.App.Models;
@@ -82,6 +85,50 @@ namespace Nuform.App.ViewModels
                 // Fallback: set window content directly
                 System.Windows.Application.Current.MainWindow.Content = new Nuform.App.IntakePage();
             });
+            ExportSofCommand = new RelayCommand(_ =>
+            {
+                var dlg = new SaveFileDialog
+                {
+                    Title = "Save Component Order (.sof)",
+                    Filter = "SOF|*.sof",
+                    FileName = $"component_order_{DateTime.Now:yyyyMMdd_HHmm}.sof",
+                    AddExtension = true,
+                    OverwritePrompt = true
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    var parts = new System.Collections.Generic.List<SofPart>();
+                    foreach (var r in BillOfMaterials)
+                    {
+                        // Convert to integer quantity (ceil), skip zeros
+                        int qty = (int)Math.Ceiling((double)r.FinalQty);
+                        if (qty <= 0) continue;
+                        var units = string.IsNullOrWhiteSpace(r.Unit) ? "pcs" : r.Unit;
+                        var desc  = string.IsNullOrWhiteSpace(r.Name) ? r.PartNumber : r.Name;
+                        parts.Add(new SofPart { PartCode = r.PartNumber, Quantity = qty, Units = units, Description = desc });
+                    }
+
+                    var info = new SofCompanyInfo
+                    {
+                        Venture = "",
+                        ModelName = "",
+                        ModelSubName = "",
+                        Location = "",
+                        Quantity = 1,
+                        Width = 0,
+                        Height = 0,
+                        Floors = 1,
+                        SoldTo = "",
+                        ShipTo = "SoldTo",
+                        FreightBy = "Nuform",
+                        Date = DateTime.Today
+                    };
+
+                    SofV2Writer.Write(dlg.FileName, info, parts);
+                    MessageBox.Show($"SOF saved:\\n{dlg.FileName}", "Export SOF");
+                }
+            });
+        
 
             ResetCommand = new RelayCommand(_ =>
             {

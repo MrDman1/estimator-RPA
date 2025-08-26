@@ -54,4 +54,33 @@ namespace Nuform.Core.Domain
             return 16;
         }
     }
+
+
+        /// <summary>
+        /// Decide whether to ship 12′ or 16′ trim for a given required LF.
+        /// Signature matches existing callsites in BomService.
+        /// </summary>
+        public static int DecideTrimLengthFeet(TrimKind kind, bool anyPanelOver12, double requiredLF, Func<int,int> piecesPerPackProvider)
+        {
+            // Allow provider to vary by length if needed
+            int pcs12 = piecesPerPackProvider != null ? piecesPerPackProvider(12) : PiecesPerPackage[kind];
+            int pcs16 = piecesPerPackProvider != null ? piecesPerPackProvider(16) : PiecesPerPackage[kind];
+
+            double cap12 = pcs12 * 12.0;
+            double cap16 = pcs16 * 16.0;
+
+            int packs12 = (int)Math.Ceiling(requiredLF / cap12);
+            int packs16 = (int)Math.Ceiling(requiredLF / cap16);
+
+            double waste12 = packs12 <= 0 ? 0.0 : (packs12 * cap12 - requiredLF) / (packs12 * cap12);
+            double waste16 = packs16 <= 0 ? 0.0 : (packs16 * cap16 - requiredLF) / (packs16 * cap16);
+
+            // Rule: if 16′ waste > 60% and 12′ is not worse, choose 12′.
+            if (waste16 > 0.60 && waste12 <= waste16) return 12;
+
+            // Otherwise choose the option with lower waste. Tie → prefer 16′ (fewer seams).
+            if (Math.Abs(waste12 - waste16) < 1e-9) return 16;
+            return waste12 < waste16 ? 12 : 16;
+        }
+
 }

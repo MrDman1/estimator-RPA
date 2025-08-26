@@ -18,7 +18,8 @@
       <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
         <Button Content="Open Calculations" Command="{Binding OpenCalculationsCommand}" Margin="0,0,8,0"/>
         <Button Content="Export PDF" Command="{Binding ExportPdfCommand}" Margin="0,0,8,0"/>
-        <Button Content="Export CSV" Command="{Binding ExportCsvCommand}" />
+        <Button Content="Export CSV" Command="{Binding ExportCsvCommand}" Margin="0,0,8,0"/>
+        <Button Content="Export SOF" Command="{Binding ExportSofCommand}" />
       </StackPanel>
     </StackPanel>
 
