@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using Nuform.Core;
+using Nuform.Core.Domain;
+using CatalogItem = Nuform.Core.LegacyCompat.CatalogItem;
+using CatalogService = Nuform.Core.LegacyCompat.CatalogService;
 
 namespace Nuform.App;
 
