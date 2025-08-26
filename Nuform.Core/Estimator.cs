@@ -84,7 +84,7 @@ public class EstimateResult
 
 public class Estimator
 {
-    static double PanelWidthFt(double inches) => inches / 12.0;
+    static double PanelWidthFt(double inches) => inches == 18 ? 1.5 : 1.0;
 
     static int RoundPanels(double panels)
     {

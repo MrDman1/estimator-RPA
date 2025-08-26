@@ -8,23 +8,10 @@ using VmEstimateState = Nuform.App.ViewModels.EstimateState;
 using DomainCeilingOrientation = Nuform.Core.Domain.CeilingOrientation;
 using DomainOpeningTreatment   = Nuform.Core.Domain.OpeningTreatment;
 using DomainNuformColor        = Nuform.Core.Domain.NuformColor;
+using Room = Nuform.Core.LegacyCompat.Room;
 
 namespace Nuform.App
 {
-    public class RoomInput
-    {
-        public double LengthFt { get; set; }
-        public double WidthFt { get; set; }
-        public double HeightFt { get; set; }
-        public double WallPanelLengthFt { get; set; }
-        public double PanelWidthInches { get; set; } = 12;
-        public bool HasCeiling { get; set; }
-        public double CeilingPanelLengthFt { get; set; }
-        public DomainCeilingOrientation CeilingOrientation { get; set; } = DomainCeilingOrientation.Lengthwise;
-        public DomainNuformColor WallPanelColor { get; set; } = DomainNuformColor.NuformWhite;
-        public DomainNuformColor CeilingPanelColor { get; set; } = DomainNuformColor.NuformWhite;
-    }
-
     public partial class IntakePage : Page
     {
         public static double[] PanelWidths { get; } = new[] { 12.0, 18.0 };
@@ -37,7 +24,7 @@ namespace Nuform.App
         public static DomainOpeningTreatment[] OpeningTreatments { get; } =
             (DomainOpeningTreatment[])System.Enum.GetValues(typeof(DomainOpeningTreatment));
 
-        private ObservableCollection<RoomInput> Rooms { get; } = new();
+        private ObservableCollection<Room> Rooms { get; } = new();
         private ObservableCollection<OpeningInput> Openings { get; } = new();
         private readonly VmEstimateState _state = new();
 
@@ -51,11 +38,17 @@ namespace Nuform.App
 
         private void Next_Click(object sender, RoutedEventArgs e)
         {
-            RoomsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-            RoomsGrid.CommitEdit(DataGridEditingUnit.Row, true);
-            OpeningsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-            OpeningsGrid.CommitEdit(DataGridEditingUnit.Row, true);
-            BindingGroup?.CommitEdit();
+            // Commit any pending edits so we don't read stale/zero values
+            try
+            {
+                RoomsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+                RoomsGrid.CommitEdit(DataGridEditingUnit.Row,  true);
+                OpeningsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+                OpeningsGrid.CommitEdit(DataGridEditingUnit.Row,  true);
+                this.BindingGroup?.CommitEdit();
+            }
+            catch { /* ignore commit errors */ }
+
 
             if (!Rooms.Any())
             {
@@ -65,7 +58,11 @@ namespace Nuform.App
 
             double.TryParse(ContBox.Text, out var contPerc);
             var room = Rooms.First();
-            var panelWidthFt = room.PanelWidthInches / 12.0;
+
+            // Enforce color↔panel-width policy
+            if (room.WallPanelColor == DomainNuformColor.Black) room.PanelWidthInches = 18;
+            else if (room.WallPanelColor == DomainNuformColor.Tan) room.PanelWidthInches = 12;
+            var panelWidthFt = room.PanelWidthInches == 18 ? 1.5 : 1.0;
 
             var input = new BuildingInput
             {

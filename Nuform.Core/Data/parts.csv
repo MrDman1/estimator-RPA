@@ -1,6 +1,6 @@
 PartNumber,Description,Units,PackPieces,LengthFt,Color,Category
 GEL2SECEBW,Inside Corner 12ft BRIGHT WHITE,pkg,5,12,BRIGHT WHITE,CornerInside
-GEL1SECEBW,Outside Corner 12ft BRIGHT WHITE,pkg,10,12,BRIGHT WHITE,CornerOutside
+GEL1SECEBW,Outside Corner 12ft BRIGHT WHITE,pkg,5,12,BRIGHT WHITE,CornerOutside
 GERLCTCEBW,Cove Trim 12ft BRIGHT WHITE,pkg,5,12,BRIGHT WHITE,Cove
 TEMUTBEBWH,Crown/Base Base 16ft NUFORM WHITE,pkg,10,16,NUFORM WHITE,CrownBaseBase
 TEMUTCEBWH,Crown/Base Cap 16ft NUFORM WHITE,pkg,10,16,NUFORM WHITE,CrownBaseCap
@@ -17,6 +17,33 @@ GEL1PPAABK,Plugs Black,pkg,100,0,BLACK,Accessories
 GEL1PPAABW,Plugs Bright White,pkg,100,0,BRIGHT WHITE,Accessories
 GEL1PPAAWH,Plugs Nuform White,pkg,100,0,NUFORM WHITE,Accessories
 GEL1PSADWH,Spacers White,pkg,20,0,NUFORM WHITE,Accessories
-HPR016AANA,Wall Screws Concrete 500pcs,pcs,500,0,NA,Screws
-HPR017AANA,Ceiling Screws Stainless 500pcs,pcs,500,0,NA,Screws
-HPR018AENA,Expansion Tool,pkg,5,0,NA,Accessories
+HPR016AANA,Wall Screws Concrete 500pcs,pcs,500,0,,Screws
+HPR017AANA,Ceiling Screws Stainless 500pcs,pcs,500,0,,Screws
+HPR018AENA,Expansion Tool,pkg,5,0,,Accessories
+GEL2SEEEBW,Inside Corner 16ft BRIGHT WHITE,pkg,5,16,BRIGHT WHITE,CornerInside
+GEL1SEEEBW,Outside Corner 16ft BRIGHT WHITE,pkg,5,16,BRIGHT WHITE,CornerOutside
+GEL2SEEBWH,Inside Corner 16ft NUFORM WHITE,pkg,5,16,NUFORM WHITE,CornerInside
+GEL1SEEBWH,Outside Corner 16ft NUFORM WHITE,pkg,5,16,NUFORM WHITE,CornerOutside
+GEL2SECBWH,Inside Corner 12ft NUFORM WHITE,pkg,5,12,NUFORM WHITE,CornerInside
+GEL1SECBWH,Outside Corner 12ft NUFORM WHITE,pkg,5,12,NUFORM WHITE,CornerOutside
+J16BR,J Trim 16ft BRIGHT WHITE,pkg,10,16,BRIGHT WHITE,J
+J12NU,J Trim 12ft NUFORM WHITE,pkg,10,12,NUFORM WHITE,J
+J12GR,J Trim 12ft GRAY,pkg,10,12,GRAY,J
+J16GR,J Trim 16ft GRAY,pkg,10,16,GRAY,J
+J12BL,J Trim 12ft BLACK,pkg,10,12,BLACK,J
+J12TA,J Trim 12ft TAN,pkg,10,12,TAN,J
+COVE16BR,Cove Trim 16ft BRIGHT WHITE,pkg,5,16,BRIGHT WHITE,Cove
+COVE12NU,Cove Trim 12ft NUFORM WHITE,pkg,5,12,NUFORM WHITE,Cove
+COVE16NU,Cove Trim 16ft NUFORM WHITE,pkg,5,16,NUFORM WHITE,Cove
+COVE12GR,Cove Trim 12ft GRAY,pkg,5,12,GRAY,Cove
+COVE16GR,Cove Trim 16ft GRAY,pkg,5,16,GRAY,Cove
+COVE12BL,Cove Trim 12ft BLACK,pkg,5,12,BLACK,Cove
+COVE12TA,Cove Trim 12ft TAN,pkg,5,12,TAN,Cove
+H12BR,H Trim 12ft BRIGHT WHITE,pkg,5,12,BRIGHT WHITE,H
+H16BR,H Trim 16ft BRIGHT WHITE,pkg,5,16,BRIGHT WHITE,H
+H12NU,H Trim 12ft NUFORM WHITE,pkg,5,12,NUFORM WHITE,H
+H16NU,H Trim 16ft NUFORM WHITE,pkg,5,16,NUFORM WHITE,H
+H12GR,H Trim 12ft GRAY,pkg,5,12,GRAY,H
+H16GR,H Trim 16ft GRAY,pkg,5,16,GRAY,H
+H12BL,H Trim 12ft BLACK,pkg,5,12,BLACK,H
+H12TA,H Trim 12ft TAN,pkg,5,12,TAN,H

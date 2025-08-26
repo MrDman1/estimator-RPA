@@ -41,7 +41,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
 
         double openingsWidthLF = input.Openings.Where(o => o.Treatment == DomainOpeningTreatment.BUTT)
             .Sum(o => o.Width * o.Count);
-        double panelWidthFt = input.WallPanelWidthInches / 12.0;
+        double panelWidthFt = input.WallPanelWidthInches == 18 ? 1.5 : 1.0;
         double headerLFAdd = input.Openings.Where(o => o.Treatment == DomainOpeningTreatment.BUTT)
             .Sum(o =>
             {
@@ -52,11 +52,11 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
                 double headerPanelsAdded = (o.Width * o.Count) / piecesPerFull;
                 return headerPanelsAdded * panelWidthFt;
             });
-        double netLF = Math.Max(0.0, (double)perim - openingsWidthLF + headerLFAdd);
+        double netLF = (double)perim - openingsWidthLF + headerLFAdd;
 
         double extrasPct = input.ExtraPercent ?? CalcSettings.DefaultExtraPercent;
         double withExtras = netLF * (1 + extrasPct / 100.0);
-        int basePanels = Math.Max(0, (int)Math.Ceiling(withExtras / panelWidthFt));
+        int basePanels = (int)Math.Ceiling(withExtras / panelWidthFt);
         int roundedPanels = CalcService.RoundPanels(basePanels);
 
         sb.AppendLine("WALL PANELS");
@@ -145,21 +145,20 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         sb.AppendLine("CEILING PANELS");
         if (input.IncludeCeilingPanels)
         {
-            double cPanelWidthFt = input.CeilingPanelWidthInches / 12.0;
+            double cPanelWidthFt = input.CeilingPanelWidthInches == 18 ? 1.5 : 1.0;
             int ceilingLenFt = (int)input.CeilingPanelLengthFt;
             if (input.CeilingOrientation == DomainCeilingOrientation.Widthwise)
             {
-                int across = (int)Math.Ceiling(input.Width / cPanelWidthFt);
-                int runs = (int)Math.Ceiling(input.Length / (double)ceilingLenFt);
-                int panelsWidthwise = across * runs;
-                sb.AppendLine($"Widthwise: across = ceil(W/{cPanelWidthFt:F1}) = {across}; runs = ceil(L/{ceilingLenFt}) = {runs}; total = across×runs = {panelsWidthwise}");
+                int rows = (int)Math.Ceiling(input.Length / cPanelWidthFt);
+                int panelsWidthwise = rows;
+                sb.AppendLine($"Widthwise: rows = ceil(L/{cPanelWidthFt:F1}) = {rows}; panels = rows = {panelsWidthwise}");
             }
             else
             {
-                int across = (int)Math.Ceiling(input.Length / cPanelWidthFt);
-                int runs = (int)Math.Ceiling(input.Width / (double)ceilingLenFt);
-                int panelsLengthwise = across * runs;
-                sb.AppendLine($"Lengthwise: across = ceil(L/{cPanelWidthFt:F1}) = {across}; runs = ceil(W/{ceilingLenFt}) = {runs}; total = across×runs = {panelsLengthwise}");
+                int rows = (int)Math.Ceiling(input.Width / cPanelWidthFt);
+                int panelsPerRow = (int)Math.Ceiling(input.Length / (double)ceilingLenFt);
+                int panelsLengthwise = rows * panelsPerRow;
+                sb.AppendLine($"Lengthwise: rows = ceil(W/{cPanelWidthFt:F1}) = {rows}; panels/row = ceil(L/{ceilingLenFt}) = {panelsPerRow}; total = rows×panels/row = {panelsLengthwise}");
             }
         }
 

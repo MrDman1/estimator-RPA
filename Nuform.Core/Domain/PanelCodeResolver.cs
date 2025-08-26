@@ -1,28 +1,9 @@
-using System;
-using System.Collections.Generic;
-
 namespace Nuform.Core.Domain
 {
     public enum NuformColor { BrightWhite, NuformWhite, Black, Gray, Tan }
 
     public static class PanelCodeResolver
     {
-        static readonly Dictionary<string, string> ColorAliases = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["NuformWhite"] = "NUFORM WHITE",
-            ["Nuform White"] = "NUFORM WHITE",
-            ["White Nuform"] = "NUFORM WHITE",
-            ["BrightWhite"] = "BRIGHT WHITE",
-            ["Bright White"] = "BRIGHT WHITE",
-        };
-
-        public static string NormalizeColor(string? color)
-        {
-            if (string.IsNullOrWhiteSpace(color)) return "NUFORM WHITE";
-            var key = color.Trim();
-            return ColorAliases.TryGetValue(key, out var std) ? std : key.ToUpperInvariant();
-        }
-
         // Length → letter in Nuform catalog
         public static string LengthLetter(int lengthFt) => lengthFt switch
         {
@@ -53,8 +34,7 @@ namespace Nuform.Core.Domain
             return ($"GEL2PL{L}A{C}", $"RELINE R3 12\" Panel ({color}) {lengthFt}′");
         }
 
-        public static NuformColor ParseColor(string color)
-            => NormalizeColor(color) switch
+        public static NuformColor ParseColor(string color) => color.ToUpperInvariant() switch
         {
             "BRIGHT WHITE" => NuformColor.BrightWhite,
             "NUFORM WHITE" => NuformColor.NuformWhite,

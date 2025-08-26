@@ -14,19 +14,14 @@
         <TextBlock Text="Rooms" FontWeight="Bold"/>
         <DataGrid x:Name="RoomsGrid" AutoGenerateColumns="False" Height="120" Margin="0 0 0 10">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="L"
-                    Binding="{Binding LengthFt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <DataGridTextColumn Header="W"
-                    Binding="{Binding WidthFt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <DataGridTextColumn Header="H"
-                    Binding="{Binding HeightFt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <DataGridTextColumn Header="WallPanelLen"
-                    Binding="{Binding WallPanelLengthFt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <DataGridTextColumn Header="L" Binding="{Binding LengthFt}" />
+                <DataGridTextColumn Header="W" Binding="{Binding WidthFt}" />
+                <DataGridTextColumn Header="H" Binding="{Binding HeightFt}" />
+                <DataGridTextColumn Header="WallPanelLen" Binding="{Binding WallPanelLengthFt}" />
                 <DataGridComboBoxColumn Header="PanelWidth" SelectedItemBinding="{Binding PanelWidthInches}" ItemsSource="{x:Static local:IntakePage.PanelWidths}" />
                 <DataGridComboBoxColumn Header="WallColor" SelectedItemBinding="{Binding WallPanelColor}" ItemsSource="{x:Static local:IntakePage.PanelColors}" />
                 <DataGridCheckBoxColumn Header="Ceiling" Binding="{Binding HasCeiling}" />
-                <DataGridTextColumn Header="CeilingLen"
-                    Binding="{Binding CeilingPanelLengthFt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <DataGridTextColumn Header="CeilingLen" Binding="{Binding CeilingPanelLengthFt}" />
                 <DataGridComboBoxColumn Header="Orientation" SelectedItemBinding="{Binding CeilingOrientation}" ItemsSource="{x:Static local:IntakePage.CeilingOrientations}" />
                 <DataGridComboBoxColumn Header="CeilColor" SelectedItemBinding="{Binding CeilingPanelColor}" ItemsSource="{x:Static local:IntakePage.PanelColors}" />
             </DataGrid.Columns>
