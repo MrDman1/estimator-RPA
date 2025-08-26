@@ -11,13 +11,14 @@ using Nuform.App.Models;
 using Nuform.App.Services;
 using Nuform.App.Views;
 using VmEstimateState = Nuform.App.ViewModels.EstimateState;
+using ServicesCatalogService = Nuform.Core.Services.CatalogService;
 
 namespace Nuform.App.ViewModels
 {
     public sealed class ResultsViewModel : INotifyPropertyChanged
     {
         public VmEstimateState State { get; }
-        private readonly CatalogService _catalog = new();
+        private readonly ServicesCatalogService _catalog = new();
         private bool _catalogError;
 
         private decimal _extrasPercent;
