@@ -68,12 +68,13 @@ namespace Nuform.App.Services
                 string[] cells = {
                     row.PartNumber ?? "",
                     row.Name ?? "",
-                    (row.SuggestedQty ?? "").ToString(),
-                    (row.Change ?? ""),
-                    (row.FinalQty ?? "").ToString(),
+                    row.SuggestedQty.ToString("N2"),
+                    row.Change ?? "0",
+                    row.FinalQty.ToString("N2"),
                     row.Unit ?? "",
                     row.Category ?? ""
                 };
+
 
                 for (int i = 0; i < col.Length; i++)
                 {
