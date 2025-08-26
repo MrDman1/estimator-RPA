@@ -1,12 +1,27 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using Excel = Microsoft.Office.Interop.Excel;
+
+using Nuform.App.Services;
+using Nuform.App.Models;
+using Nuform.App.Views;
+using Nuform.App.ViewModels;
+
 using Nuform.Core;
 using Nuform.Core.Domain;
-using CatalogItem = Nuform.Core.LegacyCompat.CatalogItem;
-using CatalogService = Nuform.Core.LegacyCompat.CatalogService;
+using Nuform.Core.Services;
+
+// ==== LegacyCompat models used by this file ====
+using AppConfig      = Nuform.Core.LegacyCompat.AppConfig;
+using EstimateResult = Nuform.Core.LegacyCompat.EstimateResult;
+using Room           = Nuform.Core.LegacyCompat.Room;
+using CatalogItem    = Nuform.Core.LegacyCompat.CatalogItem;
+
+// ==== Force the *new* catalog service to avoid ambiguity ====
+using ServicesCatalogService = Nuform.Core.Services.CatalogService;
 
 namespace Nuform.App;
 
