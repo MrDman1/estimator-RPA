@@ -2,13 +2,13 @@ using System.Linq;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
-using Nuform.Core;
 using Nuform.Core.Domain;
 using Nuform.App.ViewModels;
 using VmEstimateState = Nuform.App.ViewModels.EstimateState;
 using DomainCeilingOrientation = Nuform.Core.Domain.CeilingOrientation;
 using DomainOpeningTreatment   = Nuform.Core.Domain.OpeningTreatment;
 using DomainNuformColor        = Nuform.Core.Domain.NuformColor;
+using Room = Nuform.Core.LegacyCompat.Room;
 
 namespace Nuform.App
 {
