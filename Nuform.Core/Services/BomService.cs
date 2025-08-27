@@ -49,10 +49,7 @@ public static class BomService
         }
 
         
-        // Ceiling panels (auto length + orientation + H-Trim)
-        decimal roundedCeiling = 0m;
-        decimal ceilingPanelLf = 0m;
-        int chosenCeilShipLen = 0; // we pass this to trim logic later
+        // Ceiling panels (auto length + orientation; store H-Trim LF to add later)
         if (input.IncludeCeilingPanels)
         {
             decimal ftPerPanel = input.CeilingPanelWidthInches == 18 ? 1.5m : 1.0m;
@@ -130,12 +127,8 @@ public static class BomService
                 Console.Error.WriteLine("Missing ceiling panel specification");
             }
 
-            // H-Trim LF opposite panel direction; colour = ceiling colour
-            if (rows > 1)
-            {
-                var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
-                AddLF(ceilingTrimLF, (TrimKind.H, ceilingColor), (double)hTrimLF);
-            }
+            // Store H-Trim linear feet to add later (after trim LF dicts exist)
+            pendingCeilingHlf = rows > 1 ? (double)hTrimLF : 0.0;
         }
 // Trim LF aggregation
         var wallColor = PanelCodeResolver.ParseColor(input.WallPanelColor);
@@ -143,7 +136,14 @@ public static class BomService
         var wallAnyPanelOver12 = (double)input.WallPanelLengthFt > 12;
         var ceilingAnyPanelOver12 = chosenCeilShipLen > 12;
 
-        var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
+        
+        // Add ceiling H-Trim (if any) now that we have the LF dictionaries.
+        if (pendingCeilingHlf > 0.0)
+        {
+            var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
+            AddLF(ceilingTrimLF, (TrimKind.H, ceilingColor), pendingCeilingHlf);
+        }
+var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
         var ceilingTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
 
         double wallPerimeter = input.Mode == "ROOM" ? 2 * (input.Length + input.Width) : input.Length;

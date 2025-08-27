@@ -87,7 +87,6 @@ namespace Nuform.App
                 CeilingPanelWidthInches = (int)room.PanelWidthInches,
                 CeilingPanelLengthFt = (decimal)room.CeilingPanelLengthFt,
                 CeilingPanelColor = PanelCodeResolver.ColorName(room.CeilingPanelColor),
-                CeilingOrientation = room.CeilingOrientation,
                 IncludeWallScrews = _state.Input.IncludeWallScrews,
                 IncludeCeilingScrews = _state.Input.IncludeCeilingScrews,
                 IncludePlugs = _state.Input.IncludePlugs,
