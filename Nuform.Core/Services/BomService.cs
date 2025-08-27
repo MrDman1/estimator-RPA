@@ -26,6 +26,15 @@ public static class BomService
         decimal wallPanelLf = 0m;
         decimal ceilingPanelLf = 0m;
 
+        // --- ensure ceiling vars & LF dictionaries exist ---
+        int roundedCeiling = 0;
+        int chosenCeilShipLen = 0;
+        double pendingCeilingHlf = 0.0;
+        var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
+        var ceilingTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
+
+
+
         // Wall panels using resolver
         try
         {
@@ -140,11 +149,9 @@ public static class BomService
         // Add ceiling H-Trim (if any) now that we have the LF dictionaries.
         if (pendingCeilingHlf > 0.0)
         {
-            var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
+            // reuse ceilingColor computed above
             AddLF(ceilingTrimLF, (TrimKind.H, ceilingColor), pendingCeilingHlf);
         }
-var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
-        var ceilingTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
 
         double wallPerimeter = input.Mode == "ROOM" ? 2 * (input.Length + input.Width) : input.Length;
         double openingsButtPerimeter = 0;
