@@ -1,5 +1,4 @@
 
-        public ICommand ExportSofCommand { get; }
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -20,6 +19,8 @@ namespace Nuform.App.ViewModels
 {
     public sealed class ResultsViewModel : INotifyPropertyChanged
     {
+        public ICommand ExportSofCommand { get; }
+
         public VmEstimateState State { get; }
         private readonly ServicesCatalogService _catalog = new();
         private bool _catalogError;

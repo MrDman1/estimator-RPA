@@ -53,8 +53,6 @@ namespace Nuform.Core.Domain
             }
             return 16;
         }
-    }
-
 
         /// <summary>
         /// Decide whether to ship 12′ or 16′ trim for a given required LF.
@@ -82,5 +80,7 @@ namespace Nuform.Core.Domain
             if (Math.Abs(waste12 - waste16) < 1e-9) return 16;
             return waste12 < waste16 ? 12 : 16;
         }
+
+}
 
 }
