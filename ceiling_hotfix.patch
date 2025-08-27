@@ -1,0 +1,37 @@
+
+--- /mnt/data/nuform_estimator_hotfix3_orig/Nuform.Core/Services/BomService.cs
++++ /mnt/data/nuform_estimator_hotfix3/Nuform.Core/Services/BomService.cs
+@@ -25,6 +25,12 @@
+ 
+         decimal wallPanelLf = 0m;
+         decimal ceilingPanelLf = 0m;
++
++        // Initialize trim LF maps and ceiling variables early to avoid use-before-declaration
++        double pendingCeilingHlf = 0.0;
++        int chosenCeilShipLen = (int)input.CeilingPanelLengthFt;
++        int roundedCeiling = 0;
++
+ 
+         // Wall panels using resolver
+         try
+@@ -143,8 +149,6 @@
+             var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
+             AddLF(ceilingTrimLF, (TrimKind.H, ceilingColor), pendingCeilingHlf);
+         }
+-var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
+-        var ceilingTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
+ 
+         double wallPerimeter = input.Mode == "ROOM" ? 2 * (input.Length + input.Width) : input.Length;
+         double openingsButtPerimeter = 0;
+
+--- /mnt/data/nuform_estimator_hotfix3_orig/Nuform.Core/LegacyCompat/Room.cs
++++ /mnt/data/nuform_estimator_hotfix3/Nuform.Core/LegacyCompat/Room.cs
+@@ -9,7 +9,7 @@
+     public double PanelWidthInches { get; set; } = 12;
+     public bool HasCeiling { get; set; }
+     public double CeilingPanelLengthFt { get; set; }
+-    public CeilingOrientation CeilingOrientation { get; set; } = CeilingOrientation.Lengthwise;
++    public Nuform.Core.Domain.CeilingOrientation CeilingOrientation { get; set; } = Nuform.Core.Domain.CeilingOrientation.Lengthwise;
+ 
+     // Per-room panel colors
+     public Nuform.Core.Domain.NuformColor WallPanelColor { get; set; } = Nuform.Core.Domain.NuformColor.NuformWhite;

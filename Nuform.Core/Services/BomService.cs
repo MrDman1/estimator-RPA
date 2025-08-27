@@ -26,13 +26,10 @@ public static class BomService
         decimal wallPanelLf = 0m;
         decimal ceilingPanelLf = 0m;
 
-        // --- ensure ceiling vars & LF dictionaries exist ---
-        int roundedCeiling = 0;
-        int chosenCeilShipLen = 0;
+        // Initialize trim LF maps and ceiling variables early to avoid use-before-declaration
         double pendingCeilingHlf = 0.0;
-        var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
-        var ceilingTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
-
+        int chosenCeilShipLen = (int)input.CeilingPanelLengthFt;
+        int roundedCeiling = 0;
 
 
         // Wall panels using resolver
@@ -149,7 +146,7 @@ public static class BomService
         // Add ceiling H-Trim (if any) now that we have the LF dictionaries.
         if (pendingCeilingHlf > 0.0)
         {
-            // reuse ceilingColor computed above
+            var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
             AddLF(ceilingTrimLF, (TrimKind.H, ceilingColor), pendingCeilingHlf);
         }
 
