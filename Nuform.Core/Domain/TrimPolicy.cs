@@ -1,86 +1,67 @@
 using System;
 using System.Collections.Generic;
 
-namespace Nuform.Core.Domain
-{
-    public enum TrimKind
-    {
-        J, H, F, InsideCorner, OutsideCorner, Transition, DripEdge, Cove, CrownBaseBase, CrownBaseCap
-    }
+namespace Nuform.Core.Domain;
 
-    /// <summary>
-    /// Central place for trim packaging/waste rules.
-    /// </summary>
-    public static class TrimPolicy
+public enum TrimKind
+{
+    J, H, F, InsideCorner, OutsideCorner, Transition, DripEdge, Cove, CrownBaseBase, CrownBaseCap
+}
+
+public static class TrimPolicy
+{
+    // pieces per package per trim kind (adjust if your catalog differs)
+    public static readonly Dictionary<TrimKind, int> PiecesPerPackage = new()
     {
-        /// <summary>Pieces per package for each trim kind.</summary>
-        public static readonly Dictionary<TrimKind, int> PiecesPerPackage = new()
+        [TrimKind.J] = 10,
+        [TrimKind.F] = 10,
+        [TrimKind.H] = 5,
+        [TrimKind.InsideCorner] = 5,
+        [TrimKind.OutsideCorner] = 5,
+        [TrimKind.DripEdge] = 10,
+        [TrimKind.Cove] = 5,
+        [TrimKind.CrownBaseBase] = 5,
+        [TrimKind.CrownBaseCap] = 5,
+        [TrimKind.Transition] = 10
+    };
+
+    // Which color an LF contribution belongs to, given a wall & ceiling color.
+    public static NuformColor ColorFor(TrimKind kind, NuformColor wallColor, NuformColor ceilingColor)
+        => kind switch
         {
-            [TrimKind.J] = 10,
-            [TrimKind.H] = 5,
-            [TrimKind.F] = 10,
-            [TrimKind.InsideCorner] = 5,
-            [TrimKind.OutsideCorner] = 5,
-            [TrimKind.Transition] = 10,
-            [TrimKind.DripEdge] = 10,
-            [TrimKind.Cove] = 10,
-            [TrimKind.CrownBaseBase] = 10,
-            [TrimKind.CrownBaseCap] = 10
+            TrimKind.Transition or TrimKind.DripEdge or TrimKind.Cove => ceilingColor,
+            _ => wallColor
         };
 
-        /// <summary>
-        /// Choose a 12′ or 16′ pack for trims. If 16′ waste would exceed 60% and 12′ is not worse, choose 12′.
-        /// Corners are excluded (their length rules are usually fixed elsewhere).
-        /// </summary>
-        public static int ChooseTrimPackLength(TrimKind kind, double requiredLF)
-        {
-            int pcs = PiecesPerPackage[kind];
-
-            (int packs, double wastePct) Calc(int lenFt)
-            {
-                var cap = pcs * lenFt;
-                var packs = (int)Math.Ceiling(requiredLF / cap);
-                var waste = packs <= 0 ? 0.0 : (packs * cap - requiredLF) / (packs * cap);
-                return (packs, waste);
-            }
-
-            var (p16, w16) = Calc(16);
-            var (p12, w12) = Calc(12);
-
-            if (kind != TrimKind.InsideCorner && kind != TrimKind.OutsideCorner)
-            {
-                if (w16 > 0.60 && w12 <= w16) return 12;
-            }
+    public static int DecideTrimLengthFeet(
+        TrimKind kind,
+        bool anyPanelOver12ft,     // true if any panel length > 12 for that area
+        double requiredLF,         // LF required for this trim kind & color
+        Func<int,int> piecesPerPkg // returns pieces per package for the given trim length (12 or 16)
+    )
+    {
+        // Corners-first rule: if any panel > 12′, corners MUST be 16′. No waste override for corners.
+        if ((kind == TrimKind.InsideCorner || kind == TrimKind.OutsideCorner) && anyPanelOver12ft)
             return 16;
-        }
 
-        /// <summary>
-        /// Decide whether to ship 12′ or 16′ trim for a given required LF.
-        /// Signature matches existing callsites in BomService.
-        /// </summary>
-        public static int DecideTrimLengthFeet(TrimKind kind, bool anyPanelOver12, double requiredLF, Func<int,int> piecesPerPackProvider)
-        {
-            // Allow provider to vary by length if needed
-            int pcs12 = piecesPerPackProvider != null ? piecesPerPackProvider(12) : PiecesPerPackage[kind];
-            int pcs16 = piecesPerPackProvider != null ? piecesPerPackProvider(16) : PiecesPerPackage[kind];
+        // If any panel > 12′, the "first choice" is 16′ for all trims.
+        var initial = anyPanelOver12ft ? 16 : 12;
+        if (initial == 12) return 12; // Panels ≤12′ → default 12′ for all trims.
 
-            double cap12 = pcs12 * 12.0;
-            double cap16 = pcs16 * 16.0;
+        // Waste override: Only consider downgrading 16′ → 12′ (never the reverse).
+        var pcs16 = piecesPerPkg(16);
+        var pcs12 = piecesPerPkg(12);
+        var packs16 = (int)Math.Ceiling(requiredLF / (pcs16 * 16.0));
+        var packs12 = (int)Math.Ceiling(requiredLF / (pcs12 * 12.0));
 
-            int packs12 = (int)Math.Ceiling(requiredLF / cap12);
-            int packs16 = (int)Math.Ceiling(requiredLF / cap16);
+        var waste16 = packs16 == 0 ? 0.0 : (packs16 * pcs16 * 16.0 - requiredLF) / (packs16 * pcs16 * 16.0);
+        var waste12 = packs12 == 0 ? 0.0 : (packs12 * pcs12 * 12.0 - requiredLF) / (packs12 * pcs12 * 12.0);
 
-            double waste12 = packs12 <= 0 ? 0.0 : (packs12 * cap12 - requiredLF) / (packs12 * cap12);
-            double waste16 = packs16 <= 0 ? 0.0 : (packs16 * cap16 - requiredLF) / (packs16 * cap16);
+        // Rule: if 16′ waste > 55% AND 12′ waste ≤ 40%, use 12′ (except corners – already handled).
+        if (waste16 > 0.55 && waste12 <= 0.40 && kind is not TrimKind.InsideCorner and not TrimKind.OutsideCorner)
+            return 12;
 
-            // Rule: if 16′ waste > 60% and 12′ is not worse, choose 12′.
-            if (waste16 > 0.60 && waste12 <= waste16) return 12;
-
-            // Otherwise choose the option with lower waste. Tie → prefer 16′ (fewer seams).
-            if (Math.Abs(waste12 - waste16) < 1e-9) return 16;
-            return waste12 < waste16 ? 12 : 16;
-        }
-
+        return 16;
+    }
 }
 
-}

@@ -48,58 +48,100 @@ public static class BomService
             Console.Error.WriteLine("Missing panel specification");
         }
 
-        // Ceiling panels
+        
+        // Ceiling panels (auto length + orientation + H-Trim)
         decimal roundedCeiling = 0m;
+        decimal ceilingPanelLf = 0m;
+        int chosenCeilShipLen = 0; // we pass this to trim logic later
         if (input.IncludeCeilingPanels)
         {
-            decimal panelWidthFt = input.CeilingPanelWidthInches == 18 ? 1.5m : 1.0m;
-            int panelsNeeded;
-            decimal panelLengthUsed;
+            decimal ftPerPanel = input.CeilingPanelWidthInches == 18 ? 1.5m : 1.0m;
+
+            int RoundUpStd(decimal ft)
+            {
+                int v = (int)Math.Ceiling(ft);
+                if (v < 10) v = 10;
+                if (v > 20) v = 20;
+                if (v % 2 == 1) v += 1;
+                // snap to {10,12,14,16,18,20}
+                if (v == 11) v = 12;
+                if (v == 13) v = 14;
+                if (v == 15) v = 16;
+                if (v == 17) v = 18;
+                return v;
+            }
+
+            int panelsPerRow, rows, shipLen;
+            decimal hTrimLF;
+
             if (input.CeilingOrientation == CeilingOrientation.Widthwise)
             {
-                int rows = (int)Math.Ceiling((decimal)input.Length / panelWidthFt);
-                panelsNeeded = rows;
-                panelLengthUsed = (decimal)input.Width;
+                panelsPerRow = (int)Math.Ceiling((decimal)input.Length / ftPerPanel);
+                rows = (int)Math.Ceiling((decimal)input.Width / 20m); if (rows < 1) rows = 1;
+                shipLen = RoundUpStd((decimal)input.Width / rows);
+                hTrimLF = Math.Max(0, rows - 1) * (decimal)input.Length;
             }
-            else
+            else // Lengthwise
             {
-                int rows = (int)Math.Ceiling((decimal)input.Width / panelWidthFt);
-                int perRow = (int)Math.Ceiling((decimal)input.Length / input.CeilingPanelLengthFt);
-                panelsNeeded = rows * perRow;
-                panelLengthUsed = input.CeilingPanelLengthFt;
+                panelsPerRow = (int)Math.Ceiling((decimal)input.Width / ftPerPanel);
+                int minRows = (int)Math.Ceiling((decimal)input.Length / 20m);
+                int maxRows = (int)Math.Ceiling((decimal)input.Length / 10m);
+                if (maxRows < minRows) maxRows = minRows;
+
+                int bestRows = minRows, bestShip = 20;
+                decimal bestWaste = decimal.MaxValue;
+                for (int r = minRows; r <= maxRows; r++)
+                {
+                    var s = RoundUpStd((decimal)input.Length / r);
+                    var waste = r * s - (decimal)input.Length;
+                    if (waste < bestWaste || (Math.Abs(waste - bestWaste) < 0.0001m && s > bestShip))
+                    { bestWaste = waste; bestShip = s; bestRows = r; }
+                }
+                rows = bestRows; shipLen = bestShip;
+                hTrimLF = Math.Max(0, rows - 1) * (decimal)input.Width;
             }
+
+            int totalPanels = panelsPerRow * rows;
+
             var extraPercent = (decimal)(input.ExtraPercent ?? CalcSettings.DefaultExtraPercent);
-            var withExtra = panelsNeeded * (1m + extraPercent / 100m);
+            var withExtra = totalPanels * (1m + extraPercent / 100m);
             int baseCeiling = (int)Math.Ceiling(withExtra);
             roundedCeiling = CalcService.RoundPanels(baseCeiling);
+            chosenCeilShipLen = shipLen;
 
             try
             {
                 var color = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
-                var (code, name) = PanelCodeResolver.PanelSku(input.CeilingPanelWidthInches, (int)panelLengthUsed, color);
+                var (code, name) = PanelCodeResolver.PanelSku(input.CeilingPanelWidthInches, shipLen, color);
                 var spec = new PartSpec
                 {
                     PartNumber = code,
                     Description = name,
-                    Units = "PCS",
-                    LengthFt = (int)panelLengthUsed,
+                    Units = "pcs",
+                    LengthFt = shipLen,
                     Category = "Panels"
                 };
                 Add(spec, roundedCeiling, "Panels");
                 ceilingPanelLf = roundedCeiling * (decimal)spec.LengthFt;
             }
-            catch (Exception)
+            catch
             {
                 missing = true;
                 Console.Error.WriteLine("Missing ceiling panel specification");
             }
-        }
 
-        // Trim LF aggregation
+            // H-Trim LF opposite panel direction; colour = ceiling colour
+            if (rows > 1)
+            {
+                var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
+                AddLF(ceilingTrimLF, (TrimKind.H, ceilingColor), (double)hTrimLF);
+            }
+        }
+// Trim LF aggregation
         var wallColor = PanelCodeResolver.ParseColor(input.WallPanelColor);
         var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
         var wallAnyPanelOver12 = (double)input.WallPanelLengthFt > 12;
-        var ceilingAnyPanelOver12 = (double)input.CeilingPanelLengthFt > 12;
+        var ceilingAnyPanelOver12 = chosenCeilShipLen > 12;
 
         var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
         var ceilingTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
@@ -132,14 +174,14 @@ public static class BomService
             switch (result.Trims.CeilingTransition)
             {
                 case "cove":
-                    AddLF(ceilingTrimLF, (TrimKind.Cove, ceilingColor), lf);
+                    AddLF(ceilingTrimLF, (TrimKind.Cove, wallColor), lf);
                     break;
                 case "crown-base":
-                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseBase, ceilingColor), lf);
-                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseCap, ceilingColor), lf);
+                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseBase, wallColor), lf);
+                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseCap, wallColor), lf);
                     break;
                 case "f-trim":
-                    AddLF(ceilingTrimLF, (TrimKind.Transition, ceilingColor), lf);
+                    AddLF(ceilingTrimLF, (TrimKind.Transition, wallColor), lf);
                     break;
             }
         }
