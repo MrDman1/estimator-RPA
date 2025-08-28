@@ -144,7 +144,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         sb.AppendLine();
         
         sb.AppendLine("CEILING PANELS");
-<<<<<<< HEAD
+
 if (input.IncludeCeilingPanels)
 {
     // Use the single source of truth for orientation and counts, so this text stays in sync with the BOM.
@@ -158,30 +158,6 @@ if (input.IncludeCeilingPanels)
 }
 
 foreach (var kv in ceilingTrimLF)
-=======
-        if (input.IncludeCeilingPanels)
-        {
-            // Use the single source of truth for orientation and counts, so this text stays in sync with the BOM.
-            var layout = input.CeilingOrientation == DomainCeilingOrientation.Widthwise
-                ? CeilingCalc.ComputeWidthwise(input.Length, input.Width, input.CeilingPanelWidthInches)
-                : CeilingCalc.ComputeLengthwise(input.Length, input.Width, input.CeilingPanelWidthInches);
-
-            sb.AppendLine($"{layout.Orientation}: panels/row = {layout.PanelsPerRow}; rows = {layout.Rows}; ship length = {layout.ShipLengthFt}′; total = {layout.TotalPanels}");
-            if (layout.HTrimLF > 0)
-                sb.AppendLine($"H-Trim LF (before extras) = {layout.HTrimLF:F1} ft");
-        }) = {panelsPerRow}; rows = ceil(L/{cPanelWidthFt:F1}) = {rows}; total = {total}");
-            }
-            else
-            {
-                // Panels run along the length; rows progress across the width.
-                int panelsPerRow = (int)Math.Ceiling(input.Length / ceilingLenFt);
-                int rows         = (int)Math.Ceiling(input.Width / cPanelWidthFt);
-                int total        = rows * panelsPerRow;
-                sb.AppendLine($"Lengthwise: panels/row = ceil(L/{ceilingLenFt:F1}) = {panelsPerRow}; rows = ceil(W/{cPanelWidthFt:F1}) = {rows}; total = {total}");
-            }
-        }
-    foreach (var kv in ceilingTrimLF)
->>>>>>> 9a79ab562fcdbecec380d017e497225449a76f76
         {
             var kind = kv.Key.Item1; var color = kv.Key.Item2; var lf = kv.Value;
             var anyOver12 = ceilingAnyPanelOver12;
