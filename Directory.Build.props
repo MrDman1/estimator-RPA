@@ -1,0 +1,7 @@
+<Project>
+  <!-- Per-project, per-config, per-TFM output and intermediate paths outside OneDrive -->
+  <PropertyGroup>
+    <OutputPath>$(LOCALAPPDATA)\NuformBuild\bin\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</OutputPath>
+    <IntermediateOutputPath>$(LOCALAPPDATA)\NuformBuild\obj\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</IntermediateOutputPath>
+  </PropertyGroup>
+</Project>

@@ -204,14 +204,14 @@ public static class BomService
             switch (result.Trims.CeilingTransition)
             {
                 case "cove":
-                    AddLF(ceilingTrimLF, (TrimKind.Cove, wallColor), lf);
+                    AddLF(ceilingTrimLF, (TrimKind.Cove, ceilingColor), lf); // FIX: use ceilingColor for ceiling trims
                     break;
                 case "crown-base":
-                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseBase, wallColor), lf);
-                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseCap, wallColor), lf);
+                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseBase, ceilingColor), lf); // FIX: use ceilingColor for ceiling trims
+                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseCap, ceilingColor), lf); // FIX: use ceilingColor for ceiling trims
                     break;
                 case "f-trim":
-                    AddLF(ceilingTrimLF, (TrimKind.Transition, wallColor), lf);
+                    AddLF(ceilingTrimLF, (TrimKind.Transition, ceilingColor), lf); // FIX: use ceilingColor for ceiling trims
                     break;
             }
         }

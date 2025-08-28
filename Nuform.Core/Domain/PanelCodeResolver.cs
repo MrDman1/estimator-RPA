@@ -34,15 +34,23 @@ namespace Nuform.Core.Domain
             return ($"GEL2PL{L}A{C}", $"RELINE R3 12\" Panel ({color}) {lengthFt}′");
         }
 
-        public static NuformColor ParseColor(string color) => color.ToUpperInvariant() switch
-        {
-            "BRIGHT WHITE" => NuformColor.BrightWhite,
-            "NUFORM WHITE" => NuformColor.NuformWhite,
-            "BLACK" => NuformColor.Black,
-            "GRAY" => NuformColor.Gray,
-            "TAN" => NuformColor.Tan,
-            _ => NuformColor.NuformWhite
-        };
+        public static NuformColor ParseColor(string color)
+{
+    if (string.IsNullOrWhiteSpace(color)) return NuformColor.NuformWhite;
+    // Normalize common variants: trim, allow hyphens/underscores, collapse whitespace
+    var key = System.Text.RegularExpressions.Regex.Replace(color.Trim().ToUpperInvariant(), "[-_]+", " ");
+    key = System.Text.RegularExpressions.Regex.Replace(key, @"\s+", " ");
+    return key switch
+    {
+        "BRIGHT WHITE" => NuformColor.BrightWhite,
+        "NUFORM WHITE" => NuformColor.NuformWhite,
+        "BLACK" => NuformColor.Black,
+        "GRAY" or "GREY" => NuformColor.Gray,
+        "TAN" => NuformColor.Tan,
+        _ => NuformColor.NuformWhite
+    };
+}
+
 
         public static string ColorName(NuformColor color) => color switch
         {

@@ -1,0 +1,6 @@
+[
+  {
+    "file": "estimator-RPA/Nuform.Core/Domain/PanelCodeResolver.cs",
+    "change": "ParseColor normalized & tolerant (function replacement)"
+  }
+]
