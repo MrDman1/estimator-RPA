@@ -1,7 +1,10 @@
 <Project>
-  <!-- Per-project, per-config, per-TFM output and intermediate paths outside OneDrive -->
   <PropertyGroup>
-    <OutputPath>$(LOCALAPPDATA)\NuformBuild\bin\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</OutputPath>
-    <IntermediateOutputPath>$(LOCALAPPDATA)\NuformBuild\obj\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</IntermediateOutputPath>
+    <ForcedRoot>C:\dev\NuformBuild\</ForcedRoot>
+    <OutputPath>$(ForcedRoot)bin\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</OutputPath>
+    <IntermediateOutputPath>$(ForcedRoot)obj\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</IntermediateOutputPath>
   </PropertyGroup>
+  <Target Name="AfterBuild">
+    <Exec Command="powershell -ExecutionPolicy Bypass -NoLogo -NoProfile -Command &quot;try { Unblock-File -Path '$(TargetPath)'; Unblock-File -Path '$(TargetDir)\*' -ErrorAction SilentlyContinue } catch {}&quot;" />
+  </Target>
 </Project>
