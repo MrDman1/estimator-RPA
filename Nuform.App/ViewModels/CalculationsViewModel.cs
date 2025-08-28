@@ -146,16 +146,15 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         sb.AppendLine("CEILING PANELS");
         if (input.IncludeCeilingPanels)
         {
-            double cPanelWidthFt = input.CeilingPanelWidthInches == 18 ? 1.5 : 1.0;
-            double ceilingLenFt = (double)input.CeilingPanelLengthFt;
+            // Use the single source of truth for orientation and counts, so this text stays in sync with the BOM.
+            var layout = input.CeilingOrientation == DomainCeilingOrientation.Widthwise
+                ? CeilingCalc.ComputeWidthwise(input.Length, input.Width, input.CeilingPanelWidthInches)
+                : CeilingCalc.ComputeLengthwise(input.Length, input.Width, input.CeilingPanelWidthInches);
 
-            if (input.CeilingOrientation == DomainCeilingOrientation.Widthwise)
-            {
-                // Panels run across the width; rows progress along the length.
-                int panelsPerRow = (int)Math.Ceiling(input.Width / ceilingLenFt);
-                int rows         = (int)Math.Ceiling(input.Length / cPanelWidthFt);
-                int total        = rows * panelsPerRow;
-                sb.AppendLine($"Widthwise: panels/row = ceil(W/{ceilingLenFt:F1}) = {panelsPerRow}; rows = ceil(L/{cPanelWidthFt:F1}) = {rows}; total = {total}");
+            sb.AppendLine($"{layout.Orientation}: panels/row = {layout.PanelsPerRow}; rows = {layout.Rows}; ship length = {layout.ShipLengthFt}′; total = {layout.TotalPanels}");
+            if (layout.HTrimLF > 0)
+                sb.AppendLine($"H-Trim LF (before extras) = {layout.HTrimLF:F1} ft");
+        }) = {panelsPerRow}; rows = ceil(L/{cPanelWidthFt:F1}) = {rows}; total = {total}");
             }
             else
             {
