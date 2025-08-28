@@ -24,13 +24,13 @@ public static class BomService
         }
 
         decimal wallPanelLf = 0m;
-        decimal ceilingPanelLf = 0m;
-
-        // Initialize trim LF maps and ceiling variables early to avoid use-before-declaration
+        // Trim LF maps and ceiling locals declared early so they exist before use
+        var wallTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
+        var ceilingTrimLF = new Dictionary<(TrimKind, NuformColor), double>();
         double pendingCeilingHlf = 0.0;
-        int chosenCeilShipLen = (int)input.CeilingPanelLengthFt;
+        int chosenCeilShipLen = 0;
         int roundedCeiling = 0;
-
+        decimal ceilingPanelLf = 0m;
 
         // Wall panels using resolver
         try
@@ -55,18 +55,19 @@ public static class BomService
         }
 
         
-        // Ceiling panels (auto length + orientation; store H-Trim LF to add later)
+        
+// Ceiling panels (auto length + orientation; store H-Trim LF to add later)
         if (input.IncludeCeilingPanels)
         {
             decimal ftPerPanel = input.CeilingPanelWidthInches == 18 ? 1.5m : 1.0m;
 
+            // Round up to the nearest standard shipping length between 10–20 ft, even only.
             int RoundUpStd(decimal ft)
             {
                 int v = (int)Math.Ceiling(ft);
                 if (v < 10) v = 10;
                 if (v > 20) v = 20;
                 if (v % 2 == 1) v += 1;
-                // snap to {10,12,14,16,18,20}
                 if (v == 11) v = 12;
                 if (v == 13) v = 14;
                 if (v == 15) v = 16;
@@ -74,34 +75,60 @@ public static class BomService
                 return v;
             }
 
-            int panelsPerRow, rows, shipLen;
-            decimal hTrimLF;
+            // Orientation handling: swap L/W when Widthwise so the math is identical.
+            decimal Lx = (decimal)input.Length;
+            decimal Wx = (decimal)input.Width;
+            bool isLengthwise = input.CeilingOrientation == CeilingOrientation.Lengthwise;
+            if (!isLengthwise)
+                (Lx, Wx) = (Wx, Lx);
 
-            if (input.CeilingOrientation == CeilingOrientation.Widthwise)
+            // Panels per row across the perpendicular (panel widths)
+            int panelsPerRow = (int)Math.Ceiling(Wx / ftPerPanel);
+
+            // Optional manual panel length override from the UI (CeilingLen / CeilingPanelLengthFt).
+            int? userLen = null;
+            try
             {
-                panelsPerRow = (int)Math.Ceiling((decimal)input.Length / ftPerPanel);
-                rows = (int)Math.Ceiling((decimal)input.Width / 20m); if (rows < 1) rows = 1;
-                shipLen = RoundUpStd((decimal)input.Width / rows);
-                hTrimLF = Math.Max(0, rows - 1) * (decimal)input.Length;
+                var t = input.GetType();
+                var p = t.GetProperty("CeilingPanelLengthFt") ?? t.GetProperty("CeilingLen") ?? t.GetProperty("CeilingLengthFt");
+                if (p != null)
+                {
+                    var val = p.GetValue(input);
+                    if (val is int iv) userLen = iv;
+                    else if (val is double dv) userLen = (int)Math.Round(dv);
+                    else if (val is decimal mv) userLen = (int)Math.Ceiling(mv);
+                }
             }
-            else // Lengthwise
+            catch { /* ignore and fall back to computed */ }
+
+            int rows;
+            int shipLen;
+
+            // If user specified a valid shipping length (10,12,14,16,18,20), respect it.
+            if (userLen.HasValue && userLen.Value >= 10 && userLen.Value <= 20 && userLen.Value % 2 == 0)
             {
-                panelsPerRow = (int)Math.Ceiling((decimal)input.Width / ftPerPanel);
-                int minRows = (int)Math.Ceiling((decimal)input.Length / 20m);
-                int maxRows = (int)Math.Ceiling((decimal)input.Length / 10m);
+                shipLen = userLen.Value;
+                rows = (int)Math.Ceiling(Lx / shipLen);
+            }
+            else
+            {
+                // Choose rows (panel lengths) to minimize waste with 10–20 ft standard lengths
+                int minRows = (int)Math.Ceiling(Lx / 20m);
+                int maxRows = (int)Math.Ceiling(Lx / 10m);
                 if (maxRows < minRows) maxRows = minRows;
 
                 int bestRows = minRows, bestShip = 20;
                 decimal bestWaste = decimal.MaxValue;
                 for (int r = minRows; r <= maxRows; r++)
                 {
-                    var s = RoundUpStd((decimal)input.Length / r);
-                    var waste = r * s - (decimal)input.Length;
+                    var s = RoundUpStd(Lx / r);
+                    var waste = r * s - Lx;
                     if (waste < bestWaste || (Math.Abs(waste - bestWaste) < 0.0001m && s > bestShip))
                     { bestWaste = waste; bestShip = s; bestRows = r; }
                 }
-                rows = bestRows; shipLen = bestShip;
-                hTrimLF = Math.Max(0, rows - 1) * (decimal)input.Width;
+
+                rows = bestRows;
+                shipLen = bestShip;
             }
 
             int totalPanels = panelsPerRow * rows;
@@ -133,10 +160,10 @@ public static class BomService
                 Console.Error.WriteLine("Missing ceiling panel specification");
             }
 
-            // Store H-Trim linear feet to add later (after trim LF dicts exist)
+            // H-trim runs along the perpendicular span between rows.
+            decimal hTrimLF = Math.Max(0, rows - 1) * Wx;
             pendingCeilingHlf = rows > 1 ? (double)hTrimLF : 0.0;
-        }
-// Trim LF aggregation
+        }// Trim LF aggregation
         var wallColor = PanelCodeResolver.ParseColor(input.WallPanelColor);
         var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
         var wallAnyPanelOver12 = (double)input.WallPanelLengthFt > 12;
@@ -146,7 +173,6 @@ public static class BomService
         // Add ceiling H-Trim (if any) now that we have the LF dictionaries.
         if (pendingCeilingHlf > 0.0)
         {
-            var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
             AddLF(ceilingTrimLF, (TrimKind.H, ceilingColor), pendingCeilingHlf);
         }
 
