@@ -1,7 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|c:\\users\\dbeland\\onedrive - nuform building technologies inc\\documents\\github\\estimator-rpa\\nuform.core\\domain\\panelcoderesolver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|solutionrelative:nuform.core\\domain\\panelcoderesolver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 1,
@@ -9,8 +14,21 @@
       "DocumentGroups": [
         {
           "DockedHeight": 371,
-          "SelectedChildIndex": -1,
+          "SelectedChildIndex": 0,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "PanelCodeResolver.cs",
+              "DocumentMoniker": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.Core\\Domain\\PanelCodeResolver.cs",
+              "RelativeDocumentMoniker": "Nuform.Core\\Domain\\PanelCodeResolver.cs",
+              "ToolTip": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.Core\\Domain\\PanelCodeResolver.cs",
+              "RelativeToolTip": "Nuform.Core\\Domain\\PanelCodeResolver.cs",
+              "ViewState": "AgIAAB8AAAAAAAAAAAAWwEMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-29T15:09:48.953Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
