@@ -1,10 +1,11 @@
 {
+  "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "Profile 1": {
+    "Nuform.App (dotnet host)": {
       "commandName": "Executable",
       "executablePath": "C:\\Program Files\\dotnet\\dotnet.exe",
-      "commandLineArgs": "\"C:\\dev\\NuformBuild\\bin\\Nuform.App\\Debug\\net8.0-windows\\Nuform.App.dll\"",
-      "workingDirectory": "C:\\dev\\NuformBuild\\bin\\Nuform.App\\Debug\\net8.0-windows\\"
+      "commandLineArgs": "\"$(TargetDir)Nuform.App.dll\"",
+      "workingDirectory": "$(TargetDir)"
     }
   }
 }

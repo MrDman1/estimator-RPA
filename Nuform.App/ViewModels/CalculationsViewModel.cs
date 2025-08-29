@@ -144,10 +144,9 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         sb.AppendLine();
         
         sb.AppendLine("CEILING PANELS");
-
 if (input.IncludeCeilingPanels)
 {
-    // Use the single source of truth for orientation and counts, so this text stays in sync with the BOM.
+    // Canonical: use CeilingCalc so display matches BOM exactly.
     var layout = input.CeilingOrientation == DomainCeilingOrientation.Widthwise
         ? CeilingCalc.ComputeWidthwise(input.Length, input.Width, input.CeilingPanelWidthInches)
         : CeilingCalc.ComputeLengthwise(input.Length, input.Width, input.CeilingPanelWidthInches);
@@ -156,6 +155,8 @@ if (input.IncludeCeilingPanels)
     if (layout.HTrimLF > 0)
         sb.AppendLine($"H-Trim LF (before extras) = {layout.HTrimLF:F1} ft");
 }
+
+
 
 foreach (var kv in ceilingTrimLF)
         {

@@ -37,7 +37,6 @@ namespace Nuform.Core.Domain
         public static NuformColor ParseColor(string color)
 {
     if (string.IsNullOrWhiteSpace(color)) return NuformColor.NuformWhite;
-    // Normalize common variants: trim, allow hyphens/underscores, collapse whitespace
     var key = System.Text.RegularExpressions.Regex.Replace(color.Trim().ToUpperInvariant(), "[-_]+", " ");
     key = System.Text.RegularExpressions.Regex.Replace(key, @"\s+", " ");
     return key switch
@@ -49,6 +48,8 @@ namespace Nuform.Core.Domain
         "TAN" => NuformColor.Tan,
         _ => NuformColor.NuformWhite
     };
+}
+;
 }
 
 
