@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Profile 1": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files\\dotnet\\dotnet.exe",
+      "commandLineArgs": "\"C:\\dev\\NuformBuild\\bin\\Nuform.App\\Debug\\net8.0-windows\\Nuform.App.dll\"",
+      "workingDirectory": "C:\\dev\\NuformBuild\\bin\\Nuform.App\\Debug\\net8.0-windows\\"
+    }
+  }
+}

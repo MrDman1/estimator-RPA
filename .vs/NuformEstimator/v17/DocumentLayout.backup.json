@@ -3,8 +3,8 @@
   "WorkspaceRootPath": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|c:\\users\\dbeland\\onedrive - nuform building technologies inc\\documents\\github\\estimator-rpa\\nuform.app\\services\\pdfexportservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|solutionrelative:nuform.app\\services\\pdfexportservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|c:\\users\\dbeland\\onedrive - nuform building technologies inc\\documents\\github\\estimator-rpa\\nuform.app\\nuform.app.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
+      "RelativeMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|solutionrelative:nuform.app\\nuform.app.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
     }
   ],
   "DocumentGroupContainers": [
@@ -13,28 +13,21 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedHeight": 200,
+          "DockedHeight": 29,
           "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "PdfExportService.cs",
-              "DocumentMoniker": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\Services\\PdfExportService.cs",
-              "RelativeDocumentMoniker": "Nuform.App\\Services\\PdfExportService.cs",
-              "ToolTip": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\Services\\PdfExportService.cs",
-              "RelativeToolTip": "Nuform.App\\Services\\PdfExportService.cs",
-              "ViewState": "AgIAADAAAAAAAAAAAAAhwE4AAAA0AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-26T18:33:32.535Z",
+              "Title": "Nuform.App",
+              "DocumentMoniker": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\Nuform.App.csproj",
+              "RelativeDocumentMoniker": "Nuform.App\\Nuform.App.csproj",
+              "ToolTip": "C:\\Users\\dbeland\\OneDrive - Nuform Building Technologies Inc\\Documents\\GitHub\\estimator-RPA\\Nuform.App\\Nuform.App.csproj",
+              "RelativeToolTip": "Nuform.App\\Nuform.App.csproj",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-08-29T14:47:20.476Z",
               "EditorCaption": ""
-            }
-          ]
-        },
-        {
-          "DockedHeight": 200,
-          "SelectedChildIndex": -1,
-          "Children": [
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
