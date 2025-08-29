@@ -1,0 +1,30 @@
+{
+  "job_id": "JOB-0001",
+  "customer": {
+    "name": "Acme Builders Ltd.",
+    "email": "jane@acme.com",
+    "max_abentry_key": "AB-12345"
+  },
+  "project": {
+    "site": "123 King St, Toronto",
+    "source": "manual"
+  },
+  "line_items": [
+    {
+      "room": "Lobby",
+      "opening": "Main door",
+      "size": "36x84",
+      "qty": 2,
+      "spec": "Solid core",
+      "price": 450.0
+    },
+    {
+      "room": "Storage",
+      "opening": "Side door",
+      "size": "32x80",
+      "qty": 1,
+      "spec": "Hollow core",
+      "price": 250.0
+    }
+  ]
+}

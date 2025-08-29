@@ -319,13 +319,19 @@ public static class BomService
         TrimKind.J => "J",
         TrimKind.InsideCorner => "CornerInside",
         TrimKind.OutsideCorner => "CornerOutside",
-        TrimKind.Transition => "F",
+        // Transition (F‑Trim) and F trims map to the J category.  The Nuform
+        // product catalogue does not currently contain a distinct "F" trim,
+        // and historically the F‑Trim shares the same pack size and
+        // inventory as the J‑Trim.  Mapping to "J" ensures that a valid
+        // specification is always found and prevents "Missing Transition
+        // specification" errors when generating BOMs.
+        TrimKind.Transition => "J",
         TrimKind.DripEdge => "DripEdge",
         TrimKind.Cove => "Cove",
         TrimKind.CrownBaseBase => "CrownBaseBase",
         TrimKind.CrownBaseCap => "CrownBaseCap",
         TrimKind.H => "H",
-        TrimKind.F => "F",
+        TrimKind.F => "J",
         _ => "J"
     };
 

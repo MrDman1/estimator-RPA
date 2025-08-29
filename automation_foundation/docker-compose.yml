@@ -1,0 +1,25 @@
+
+version: "3.9"
+services:
+  api:
+    build: ./
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+    env_file: .env
+    ports: ["8000:8000"]
+    depends_on: [redis]
+    volumes:
+      - ./:/app
+      - artifacts:/app/artifacts
+  worker:
+    build: ./
+    command: bash -lc "rq worker -u ${REDIS_URL} ${RQ_QUEUE}"
+    env_file: .env
+    depends_on: [redis]
+    volumes:
+      - ./:/app
+      - artifacts:/app/artifacts
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+volumes:
+  artifacts:

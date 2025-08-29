@@ -1,0 +1,37 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: sans-serif; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 6px; font-size: 12px; }
+    th { background: #f4f4f4; }
+  </style>
+</head>
+<body>
+  <h2>Schedule of Finishes (SOF)</h2>
+  <p><strong>Job ID:</strong> {{ job.job_id }}</p>
+  <p><strong>Customer:</strong> {{ job.customer.name }}</p>
+  <p><strong>Site:</strong> {{ job.project.site }}</p>
+
+  <table>
+    <thead>
+      <tr><th>Room</th><th>Opening</th><th>Size</th><th>Qty</th><th>Spec</th><th>Price</th></tr>
+    </thead>
+    <tbody>
+      {% for li in job.line_items %}
+      <tr>
+        <td>{{ li.room }}</td>
+        <td>{{ li.opening }}</td>
+        <td>{{ li.size }}</td>
+        <td style="text-align:right">{{ li.qty }}</td>
+        <td>{{ li.spec }}</td>
+        <td style="text-align:right">{{ '%.2f'|format(li.price or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

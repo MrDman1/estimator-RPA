@@ -1,0 +1,9 @@
+
+<!doctype html>
+<html><body>
+  <p>Hi {{ customer }},</p>
+  <p>Please find your estimate{% if estimate_no %} <strong>#{{ estimate_no }}</strong>{% endif %} attached.</p>
+  {% if total %}<p><strong>Total:</strong> ${{ '%.2f'|format(total) }}</p>{% endif %}
+  <p>Reply to this email if you have any questions.</p>
+  <p>Best,<br/>Estimating Team</p>
+</body></html>

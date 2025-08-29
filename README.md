@@ -1,10 +1,58 @@
-# estimator-RPA
+<!--
+  NOTE FOR DEVELOPERS:
+  This repository has been cleaned up and consolidated into a single, self‑contained
+  project.  Historical patch files and temporary README fragments have been removed,
+  and all documented fixes have been incorporated directly into the source code.
+  See the "Developer Notes" section near the bottom of this file for guidance on
+  extending or modifying the application.
+-->
 
-Automating Estimation
+# Nuform Estimator & Automation Agent
+
+This solution combines the familiar Nuform estimator (RELINE / RELINE PRO calculator) with
+a new automation agent designed to orchestrate data entry across Maximizer, NSD and other
+target systems.  On start‑up the application presents a simple menu that lets users
+choose one of three workflows:
+
+1. **Automate data entry with file input** – parse a document (e.g. a PDF estimate or `.sof`
+   file) and perform data entry in target systems.  This feature is scaffolded and can be
+   extended in `AgentPage.xaml.cs`.
+2. **Automate data entry using calculator** – run the Nuform calculations behind the scenes and
+   push the resulting BOM into external systems.  This is also a stub ready for extension.
+3. **RELINE calculator** – launch the traditional estimator UI (IntakePage) to manually create
+   jobs, perform calculations and generate `.sof` files, Excel estimates and PDFs.
+
+All existing estimator functionality remains unchanged; the new agent simply wraps the
+calculator and exposes additional automation entrypoints.
+
+## Installation & Prerequisites
+
+The estimator still requires Windows with the .NET 8 desktop runtime.  See below for the
+original instructions on mapping network drives and configuring `config.json`.  To build or
+run the app, open `NuformEstimator.sln` in Visual Studio 2022 with the “.NET desktop
+development” workload or run `Build.bat` using the .NET 8 SDK.
+
+## What's New in This Version
+
+- **Automation agent landing page** – a new `AgentPage` presents options on start‑up and
+  navigates to the calculator or other workflows.
+- **Transition trim fix** – F‑Trim (labelled “Transition” in the UI) now maps internally to
+  the J‑Trim category.  The Nuform catalogue does not contain distinct F‑Trim part numbers
+  and the previous implementation produced “missing specification” errors.  Mapping to J
+  ensures that calculations always resolve a valid part and preserves pack sizing (10 pieces).
+- **Code cleanup** – historical patch files (`README-PATCH*.txt`, `.diff`, `.patch` etc.) and
+  one‑off build notes have been removed.  All fixes from those documents have been merged
+  into the source.  Documentation has been consolidated into this README.
+- **Developer notes** – see the section at the bottom of this file for guidance on the
+  internal architecture and how to extend the agent.
 
 
+---
 
-Nuform Estimator — How to Use
+## Original Nuform Estimator Usage
+
+The following section is preserved from the original README.  It describes how to operate
+the estimator and what calculations are performed under the hood.
 
 
 
@@ -197,6 +245,52 @@ The app uses a CatalogService to map item requests → real part codes.
 To add colors or new parts, edit Nuform.Core/Data/parts.csv (or update the PDF‑backed store as IT prefers):
 
 Include: PartNumber,Description,Units,PackPieces,LengthFt,Color,Category.
+
+## Developer Notes
+
+### Project structure
+
+The solution consists of two major projects:
+
+- **Nuform.Core** – domain models and calculation logic for RELINE / RELINEPRO jobs.  This
+  layer has no UI dependencies and can be tested in isolation.  Notable types include
+  `CeilingCalc`, `TrimPolicy`, `CatalogService` and `BomService`.
+- **Nuform.App** – a WPF application that hosts the UI.  `MainWindow.xaml` contains a
+  `Frame` which navigates between pages such as `AgentPage` and `IntakePage`.  View models
+  reside in `Nuform.App/ViewModels`.
+
+For automation beyond the estimator, see the companion `automation-foundation` project.
+It provides a FastAPI service, a Redis/RQ worker and Playwright scripts to drive
+Maximizer and NSD.  You can integrate those workflows by wiring the buttons on
+`AgentPage` to call into the automation APIs or run the worker locally.
+
+### Extending the automation agent
+
+`AgentPage.xaml.cs` contains stubs for the two new automation workflows.  To implement
+file‑based automation:
+
+1. Create a new WPF page (e.g. `FileInputAutomationPage`) that lets the user select a PDF,
+   Word document or `.sof` file.
+2. Parse the document using Python (see `automation/estimate_parser.py` for an example) or
+   a .NET PDF/text library.
+3. Submit the parsed data to your downstream systems via HTTP or call into the
+   `automation-foundation` API.
+
+Similarly, calculator‑driven automation can read data from the existing view models
+(`CalculationsViewModel`) and dispatch them to external systems.
+
+### Packaging and deployment
+
+To produce a distributable build, run `Build.bat` at the root of the repository or
+compile `Nuform.App` in Release mode via Visual Studio.  The published app will include
+the WPF executable, dependency DLLs and the `Data/parts.csv` catalog.
+
+### Removing patch files
+
+All historical patch files have been deleted from this repository.  If you need to refer
+to previous fixes, check the commit history in your source control system.  The code now
+reflects the latest logic for ceiling orientation, H‑Trim pack sizes and trim length
+decisions.
 
 Key categories: Panel, J, Corner90, CrownBaseBase, CrownBaseCap, Cove, Drip, F, H, Accessory.Plugs, Accessory.Spacers, Accessory.ExpansionTool, Accessory.ConcreteScrews, Accessory.StainlessScrews.
 
