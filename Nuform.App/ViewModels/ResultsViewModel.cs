@@ -1,7 +1,9 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Win32;
@@ -10,11 +12,16 @@ using Nuform.Core.Services;
 using Nuform.App.Models;
 using Nuform.App.Services;
 using Nuform.App.Views;
-using VmEstimateState = Nuform.App.ViewModels.EstimateState;
-using ServicesCatalogService = Nuform.Core.Services.CatalogService;
+using Nuform.Core;
 
 namespace Nuform.App.ViewModels
 {
+    /// <summary>
+    /// Patched ResultsViewModel implementing SOF export, overage calculation and
+    /// category normalization.  This version replaces the stubbed ExportCsvCommand
+    /// and adds a NormalizeCategory helper.  It also computes the overage for
+    /// panel lines (rounded minus base panels).
+    /// </summary>
     public sealed class ResultsViewModel : INotifyPropertyChanged
     {
         public VmEstimateState State { get; }
@@ -57,11 +64,45 @@ namespace Nuform.App.ViewModels
                 }
             });
 
-            ExportCsvCommand = new RelayCommand(_ => { });
+            // Implement SOF export using SofV2Writer.  Builds parts list from BOM rows.
+            ExportCsvCommand = new RelayCommand(_ =>
+            {
+                var dlg = new SaveFileDialog
+                {
+                    Title = "Save SOF File",
+                    Filter = "SOF|*.sof",
+                    FileName = $"estimate_parts_{DateTime.Now:yyyyMMdd_HHmm}.sof",
+                    AddExtension = true,
+                    OverwritePrompt = true
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    var partsList = new List<SofPart>();
+                    foreach (BomRow row in BillOfMaterials)
+                    {
+                        partsList.Add(new SofPart
+                        {
+                            PartCode = row.PartNumber,
+                            Quantity = (int)row.FinalQty,
+                            Units = row.Unit,
+                            Description = row.Name
+                        });
+                    }
+                    var info = new SofCompanyInfo();
+                    try
+                    {
+                        SofV2Writer.Write(dlg.FileName, info, partsList);
+                        MessageBox.Show($"SOF saved:\n{dlg.FileName}", "Export SOF");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to save SOF file:\n{ex.Message}", "Export SOF Error");
+                    }
+                }
+            });
 
             BackCommand = new RelayCommand(_ =>
             {
-                // Try WPF NavigationService (Frame hosted in MainWindow)
                 var mainWindow = System.Windows.Application.Current.MainWindow as Nuform.App.MainWindow;
                 var frame = mainWindow?.MainFrame;
                 if (frame != null)
@@ -71,7 +112,6 @@ namespace Nuform.App.ViewModels
                     return;
                 }
 
-                // NavigationWindow path
                 if (System.Windows.Application.Current.MainWindow is System.Windows.Navigation.NavigationWindow nav)
                 {
                     if (nav.CanGoBack) nav.GoBack();
@@ -79,7 +119,6 @@ namespace Nuform.App.ViewModels
                     return;
                 }
 
-                // Fallback: set window content directly
                 System.Windows.Application.Current.MainWindow.Content = new Nuform.App.IntakePage();
             });
 
@@ -173,13 +212,20 @@ namespace Nuform.App.ViewModels
             BillOfMaterials.Clear();
             foreach (var item in bom)
             {
+                string normCat = NormalizeCategory(item.Category);
+                decimal overage = 0m;
+                if (normCat == "Panels")
+                {
+                    overage = RoundedPanels - BasePanels;
+                }
                 BillOfMaterials.Add(new BomRow
                 {
                     PartNumber = item.PartNumber,
                     Name = item.Name,
                     SuggestedQty = item.Quantity,
                     Unit = item.Unit,
-                    Category = item.Category,
+                    Category = normCat,
+                    Overage = overage,
                     Change = "0"
                 });
             }
@@ -191,5 +237,22 @@ namespace Nuform.App.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged(string name) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        /// <summary>
+        /// Convert the detailed category names returned from the BOM service into the
+        /// four high‑level categories expected by the UI: Panels, Trim, Accessories
+        /// and Other.  Panels and Accessories are preserved; screws and hardware
+        /// map to Other; all remaining trim kinds map to Trim.
+        /// </summary>
+        private static string NormalizeCategory(string cat)
+        {
+            return cat switch
+            {
+                "Panels" => "Panels",
+                "Accessories" => "Accessories",
+                "Screws" => "Other",
+                _ => "Trim",
+            };
+        }
     }
 }

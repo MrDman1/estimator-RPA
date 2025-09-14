@@ -4,6 +4,9 @@ using Nuform.Core.Domain;
 
 namespace Nuform.Core.Services;
 
+// Patched version of BomService.cs with corrected J‑Trim logic.  When
+// ceiling panels are included and no ceiling transition trim is selected,
+// two extra runs of J‑Trim are added for the top and ceiling tracks.
 public static class BomService
 {
     public static IReadOnlyList<BomLineItem> Build(BuildingInput input, CalcEstimateResult result, CatalogService catalog, out bool missing)
@@ -54,9 +57,7 @@ public static class BomService
             Console.Error.WriteLine("Missing panel specification");
         }
 
-        
-        
-// Ceiling panels (auto length + orientation; store H-Trim LF to add later)
+        // Ceiling panels (auto length + orientation; store H-Trim LF to add later)
         if (input.IncludeCeilingPanels)
         {
             decimal ftPerPanel = input.CeilingPanelWidthInches == 18 ? 1.5m : 1.0m;
@@ -163,13 +164,14 @@ public static class BomService
             // H-trim runs along the perpendicular span between rows.
             decimal hTrimLF = Math.Max(0, rows - 1) * Wx;
             pendingCeilingHlf = rows > 1 ? (double)hTrimLF : 0.0;
-        }// Trim LF aggregation
+        }
+
+        // Trim LF aggregation
         var wallColor = PanelCodeResolver.ParseColor(input.WallPanelColor);
         var ceilingColor = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
         var wallAnyPanelOver12 = (double)input.WallPanelLengthFt > 12;
         var ceilingAnyPanelOver12 = chosenCeilShipLen > 12;
 
-        
         // Add ceiling H-Trim (if any) now that we have the LF dictionaries.
         if (pendingCeilingHlf > 0.0)
         {
@@ -192,6 +194,14 @@ public static class BomService
             AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsButtPerimeter);
             AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsWrappedPerimeter);
             AddLF(wallTrimLF, (TrimKind.OutsideCorner, wallColor), openingsWrappedPerimeter);
+
+            // Patched: when ceiling panels are included and no ceiling transition trim is chosen,
+            // J-Trim must also cover the top track and the ceiling track.  Add two extra
+            // runs of J-Trim equal to the wall perimeter to the ceiling trim map.
+            if (input.IncludeCeilingPanels && result.Trims.CeilingTransition == null)
+            {
+                AddLF(ceilingTrimLF, (TrimKind.J, ceilingColor), wallPerimeter * 2);
+            }
         }
 
         var insideCorners = CalcService.ComputeInsideCorners(input);
@@ -204,14 +214,14 @@ public static class BomService
             switch (result.Trims.CeilingTransition)
             {
                 case "cove":
-                    AddLF(ceilingTrimLF, (TrimKind.Cove, ceilingColor), lf); // FIX: use ceilingColor for ceiling trims
+                    AddLF(ceilingTrimLF, (TrimKind.Cove, ceilingColor), lf);
                     break;
                 case "crown-base":
-                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseBase, ceilingColor), lf); // FIX: use ceilingColor for ceiling trims
-                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseCap, ceilingColor), lf); // FIX: use ceilingColor for ceiling trims
+                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseBase, ceilingColor), lf);
+                    AddLF(ceilingTrimLF, (TrimKind.CrownBaseCap, ceilingColor), lf);
                     break;
                 case "f-trim":
-                    AddLF(ceilingTrimLF, (TrimKind.Transition, ceilingColor), lf); // FIX: use ceilingColor for ceiling trims
+                    AddLF(ceilingTrimLF, (TrimKind.Transition, ceilingColor), lf);
                     break;
             }
         }
@@ -319,12 +329,6 @@ public static class BomService
         TrimKind.J => "J",
         TrimKind.InsideCorner => "CornerInside",
         TrimKind.OutsideCorner => "CornerOutside",
-        // Transition (F‑Trim) and F trims map to the J category.  The Nuform
-        // product catalogue does not currently contain a distinct "F" trim,
-        // and historically the F‑Trim shares the same pack size and
-        // inventory as the J‑Trim.  Mapping to "J" ensures that a valid
-        // specification is always found and prevents "Missing Transition
-        // specification" errors when generating BOMs.
         TrimKind.Transition => "J",
         TrimKind.DripEdge => "DripEdge",
         TrimKind.Cove => "Cove",

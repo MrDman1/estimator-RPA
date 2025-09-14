@@ -3,15 +3,16 @@ using System.ComponentModel;
 
 namespace Nuform.App.Models;
 
+// Patched version of BomRow.cs with Overage property.
 public sealed class BomRow : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
-    private void OnChanged(string? n=null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+    private void OnChanged(string? n = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
 
-    public string PartNumber { get; init; } = "";
-    public string Name { get; init; } = "";
-    public string Unit { get; init; } = "";
-    public string Category { get; init; } = "";
+    public string PartNumber { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Unit { get; init; } = string.Empty;
+    public string Category { get; init; } = string.Empty;
 
     public decimal SuggestedQty { get; init; }
 
@@ -19,7 +20,13 @@ public sealed class BomRow : INotifyPropertyChanged
     public string Change
     {
         get => _change;
-        set { if (_change==value) return; _change = value; OnChanged(nameof(Change)); OnChanged(nameof(FinalQty)); }
+        set
+        {
+            if (_change == value) return;
+            _change = value;
+            OnChanged(nameof(Change));
+            OnChanged(nameof(FinalQty));
+        }
     }
 
     public decimal FinalQty
@@ -35,4 +42,14 @@ public sealed class BomRow : INotifyPropertyChanged
             return SuggestedQty + delta;
         }
     }
+
+    /// <summary>
+    /// Extra quantity suggested beyond the base requirement.  For panel lines this
+    /// value represents the number of additional panels (rounded minus base).
+    /// For trim and accessory lines it defaults to 0 because the underlying BOM
+    /// does not expose raw linear-footage calculations.  Consumers may bind to
+    /// this property to display overage per line item and allow manual
+    /// adjustment similar to the Change column.
+    /// </summary>
+    public decimal Overage { get; init; }
 }
