@@ -7,81 +7,21 @@ using System.Text.RegularExpressions;
 
 namespace Nuform.Core;
 
-public enum CeilingOrientation { Widthwise, Lengthwise }
-
-public class Room
-{
-    public double LengthFt { get; set; }
-    public double WidthFt { get; set; }
-    public double HeightFt { get; set; }
-    public double WallPanelLengthFt { get; set; }
-    public double PanelWidthInches { get; set; } = 12;
-    public bool HasCeiling { get; set; }
-    public double CeilingPanelLengthFt { get; set; }
-    public CeilingOrientation CeilingOrientation { get; set; } = CeilingOrientation.Lengthwise;
-}
-
-public class Opening
-{
-    public double WidthFt { get; set; }
-    public double HeightFt { get; set; }
-    public int Count { get; set; }
-    public double HeaderHeight { get; set; }
-    public double SillHeight { get; set; }
-}
-
-public class EstimateOptions
-{
-    public double Contingency { get; set; } = 0.05;
-    public string Color { get; set; } = "Bright White";
-    public string CatalogPdfPath { get; set; } = "RELINE Part List 2025-1-0.pdf";
-}
-
-public class EstimateInput
-{
-    public List<Room> Rooms { get; set; } = new();
-    public List<Opening> Openings { get; set; } = new();
-    public EstimateOptions Options { get; set; } = new();
-}
-
-public class TrimResult
-{
-    public int JTrimPacks { get; set; }
-    public int JTrimPackLenFt { get; set; }
-    public int CornerPacks { get; set; }
-    public int CornerPackLenFt { get; set; }
-    public int CrownBasePairs { get; set; }
-    public int TopTrackPackLenFt { get; set; }
-}
-
-public class HardwareResult
-{
-    public int PlugSpacerPacks { get; set; }
-    public int ExpansionTools { get; set; }
-    public int ScrewBoxes { get; set; }
-    public int WallScrewBoxes { get; set; }
-    public int CeilingScrewBoxes { get; set; }
-}
-
-public class PartRequirement
-{
-    public string PartCode { get; set; } = string.Empty;
-    public int QtyPacks { get; set; }
-    public double LFNeeded { get; set; }
-    public double TotalLFProvided { get; set; }
-}
-
-public class EstimateResult
-{
-    public Dictionary<double, int> WallPanels { get; set; } = new();
-    public Dictionary<double, int> CeilingPanels { get; set; } = new();
-    public TrimResult Trims { get; set; } = new();
-    public HardwareResult Hardware { get; set; } = new();
-    public List<PartRequirement> Parts { get; set; } = new();
-    public List<Room> Rooms { get; set; } = new();
-    public EstimateOptions? Options { get; set; } // Added for ResultsPage contingency
-}
-
+// Patched version of Estimator.cs implementing correct widthwise ceiling logic.
+// This file is a copy of the user's original Estimator class with modifications
+// to the ceiling calculation.  The widthwise branch no longer swaps length and
+// width.  Instead, panels are oriented across the room width so that there is
+// only one row.  The shipping length is determined based on the room width:
+//  * If width > 25 ft the calculation falls back to the lengthwise algorithm.
+//  * If width > 20 ft but <= 25 ft the shipping length is a custom value equal
+//    to the width rounded up to the nearest foot.
+//  * Otherwise the next even standard length (10, 12, 14, 16, 18 or 20 ft)
+//    that is at least as long as the width is used.  The user‑supplied
+//    CeilingPanelLengthFt is honoured only if it is an even length between
+//    10 and 20 ft and is not shorter than the room width.
+// Panels per row are computed along the room length and there is always one
+// row when widthwise.  For lengthwise ceilings the original logic is
+// preserved.
 public class Estimator
 {
     static double PanelWidthFt(double inches) => inches == 18 ? 1.5 : 1.0;
@@ -195,64 +135,51 @@ public class Estimator
         // Ceilings
         foreach (var room in input.Rooms.Where(r => r.HasCeiling))
         {
-            double panelWidthFt = PanelWidthFt(room.PanelWidthInches);
-            int qty; double panelLen;
-            if (room.CeilingOrientation == CeilingOrientation.Widthwise)
+            double ftPerPanel = PanelWidthFt(room.PanelWidthInches); // 1.0 or 1.5 depending on width
+            int qty;
+            double panelLen;
+
+            bool widthwise = room.CeilingOrientation == CeilingOrientation.Widthwise;
+            double width = room.WidthFt;
+            double length = room.LengthFt;
+
+            if (widthwise && width <= 25)
             {
-                double ftPerPanel = PanelWidthFt(room.PanelWidthInches); // 1.0 for 12", 1.5 for 18"
-                double width = room.WidthFt;
-                double length = room.LengthFt;
-            
-                // If the width exceeds 25 ft, revert to the lengthwise logic by jumping to the else-block below.
-                if (width > 25)
-                {
-                    goto Lengthwise; // see note below
-                }
-            
-                // Determine the shipping length for widthwise ceilings.
+                // Widthwise orientation with width <= 25 ft
+                // Determine shipping length: choose user-specified if valid, else compute
                 double desired = room.CeilingPanelLengthFt;
                 double proposed;
                 if (width > 20)
                 {
-                    // For widths >20 ft but ≤25 ft propose a custom length equal to the width rounded up.
+                    // custom length equal to room width rounded up
                     proposed = Math.Ceiling(width);
                 }
                 else
                 {
-                    // Otherwise, choose the next even standard length ≥ the width (10, 12, 14, 16, 18 or 20 ft).
                     double w = Math.Ceiling(width);
                     if (w < 10) w = 10;
                     if (w > 20) w = 20;
-                    if ((int)w % 2 != 0) w += 1;
+                    if (((int)w) % 2 != 0) w += 1;
                     proposed = w;
                 }
-            
-                // If the user supplied a ceiling length that is shorter than the width or isn’t an even number between 10 and 20, ignore it and use proposed.
-                if (desired < width || desired % 2 != 0 || desired < 10 || desired > 20)
+                // Use desired if valid (>= width, even, between 10 and 20 ft); otherwise use proposed
+                if (desired >= width && desired <= 20 && desired >= 10 && ((int)desired % 2) == 0)
                 {
-                    panelLen = proposed;
+                    panelLen = desired;
                 }
                 else
                 {
-                    // Otherwise use the supplied length, but make sure it isn’t shorter than the width.
-                    panelLen = desired < width ? proposed : desired;
+                    panelLen = proposed;
                 }
-            
-                // Widthwise ceilings have one row; panels run along the length of the building.
+                // Single row; panels per row determined by building length / panel width
                 int panelsPerRow = (int)Math.Ceiling(length / ftPerPanel);
-                int rows = 1;
-                qty = (int)Math.Ceiling(panelsPerRow * rows * (1 + input.Options.Contingency));
+                qty = (int)Math.Ceiling(panelsPerRow * (1 + input.Options.Contingency));
             }
             else
             {
-            Lengthwise:
-                // existing lengthwise logic stays here
-            }
-
-            else
-            {
-                var perRow = Math.Ceiling(room.WidthFt / panelWidthFt);
-                var rows = Math.Ceiling(room.LengthFt / room.CeilingPanelLengthFt);
+                // Lengthwise orientation or width > 25 ft: use original logic
+                var perRow = Math.Ceiling(width / ftPerPanel);
+                var rows = Math.Ceiling(length / room.CeilingPanelLengthFt);
                 qty = (int)Math.Ceiling(perRow * rows * (1 + input.Options.Contingency));
                 panelLen = room.CeilingPanelLengthFt;
             }
@@ -296,143 +223,5 @@ public class Estimator
         result.Hardware.ScrewBoxes = result.Hardware.WallScrewBoxes + result.Hardware.CeilingScrewBoxes;
 
         return result;
-    }
-}
-
-public class AppConfig
-{
-    public string WipEstimatingRoot { get; set; } = "I:/CF QUOTES/WIP Estimating";
-    public string WipDesignRoot { get; set; } = "I:/CF QUOTES/WIP Design";
-    public string PdfPrinter { get; set; } = "Microsoft Print to PDF";
-    public string ExcelTemplatePath { get; set; } = @"C:\Users\dbeland\OneDrive - Nuform Building Technologies Inc\Desktop\Estimating Template-v.2025.5.23 (64bit).xlsm";
-}
-
-public static class ConfigService
-{
-    public static AppConfig Load()
-    {
-        try
-        {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "Nuform", "Estimator", "config.json");
-            if (File.Exists(path))
-            {
-                var json = File.ReadAllText(path);
-                var cfg = JsonSerializer.Deserialize<AppConfig>(json);
-                if (cfg != null) return cfg;
-            }
-        }
-        catch { }
-        return new AppConfig();
-    }
-}
-
-public static class PathDiscovery
-{
-    static bool TryParseRange(string name, out int start, out int end)
-    {
-        start = end = 0;
-        var m = Regex.Match(name, @"(?:(\d{4})-)?(\d+)\s*to\s*(\d+)");
-        if (!m.Success) return false;
-        start = int.Parse(m.Groups[2].Value);
-        end = int.Parse(m.Groups[3].Value);
-        return true;
-    }
-
-    public static string? FindEstimateFolder(string root, string estimateNumber)
-    {
-        if (!Directory.Exists(root)) return null;
-        if (!int.TryParse(estimateNumber, out var est)) return null;
-        string? matchRange = null;
-        foreach (var dir in Directory.GetDirectories(root))
-        {
-            var name = Path.GetFileName(dir);
-            if (TryParseRange(name, out int start, out int end) && est >= start && est <= end)
-            {
-                matchRange = dir;
-                var child = Path.Combine(dir, estimateNumber);
-                if (Directory.Exists(child)) return child;
-                break;
-            }
-        }
-        if (matchRange != null)
-        {
-            foreach (var dir in Directory.GetDirectories(root))
-            {
-                var child = Path.Combine(dir, estimateNumber);
-                if (Directory.Exists(child)) return child;
-            }
-        }
-        return null;
-    }
-
-    public static string? FindBomFolder(string root, string bomNumber)
-    {
-        if (!Directory.Exists(root)) return null;
-        if (!int.TryParse(bomNumber, out var bom)) return null;
-        string? matchRange = null;
-        foreach (var dir in Directory.GetDirectories(root))
-        {
-            var name = Path.GetFileName(dir);
-            if (TryParseRange(name, out int start, out int end) && bom >= start && bom <= end)
-            {
-                matchRange = dir;
-                var child = Path.Combine(dir, bomNumber, "1-CURRENT");
-                if (Directory.Exists(child)) return child;
-                break;
-            }
-        }
-        if (matchRange != null)
-        {
-            foreach (var dir in Directory.GetDirectories(root))
-            {
-                var child = Path.Combine(dir, bomNumber, "1-CURRENT");
-                if (Directory.Exists(child)) return child;
-            }
-        }
-        return null;
-    }
-}
-
-public class FileNamingResult
-{
-    public string? ServerDrawingsPath { get; set; }
-    public string? ServerEstimatePath { get; set; }
-    public string? ServerInvoicingPath { get; set; }
-    public string? ServerCurrentPath { get; set; }
-    public string? DesktopDrawingsPath { get; set; }
-    public string? DesktopEstimatePath { get; set; }
-    public string? DesktopInvoicingPath { get; set; }
-    public string? DesktopCurrentPath { get; set; }
-    public string EstimatePdfName { get; set; } = string.Empty;
-    public string DrawingPdfName { get; set; } = string.Empty;
-    public string EmailPdfName { get; set; } = string.Empty;
-    public string? SofName { get; set; }
-}
-
-public static class FileNaming
-{
-    public static FileNamingResult Build(string estimateNumber, IEnumerable<string>? monikers,
-        string? bomNumber, string? estimateRangeFolder, string? bomRangeFolder)
-    {
-        var monik = monikers != null ? string.Concat(monikers) : string.Empty;
-        var baseName = estimateNumber + monik;
-        var desktopBase = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), baseName);
-        var res = new FileNamingResult
-        {
-            EstimatePdfName = baseName + ".pdf",
-            DrawingPdfName = baseName + " - Drawing.pdf",
-            EmailPdfName = baseName + " - Email 1.pdf",
-            SofName = bomNumber != null ? bomNumber + ".sof" : null,
-            ServerDrawingsPath = estimateRangeFolder != null ? Path.Combine(estimateRangeFolder, estimateNumber, "DRAWINGS") : null,
-            ServerEstimatePath = estimateRangeFolder != null ? Path.Combine(estimateRangeFolder, estimateNumber, "ESTIMATE") : null,
-            ServerInvoicingPath = estimateRangeFolder != null ? Path.Combine(estimateRangeFolder, estimateNumber, "INVOICING") : null,
-            ServerCurrentPath = bomRangeFolder != null && bomNumber != null ? Path.Combine(bomRangeFolder, bomNumber, "1-CURRENT") : null,
-            DesktopDrawingsPath = Path.Combine(desktopBase, "DRAWINGS"),
-            DesktopEstimatePath = Path.Combine(desktopBase, "ESTIMATE"),
-            DesktopInvoicingPath = Path.Combine(desktopBase, "INVOICING"),
-            DesktopCurrentPath = bomNumber != null ? Path.Combine(desktopBase, bomNumber, "1-CURRENT") : null
-        };
-        return res;
     }
 }
