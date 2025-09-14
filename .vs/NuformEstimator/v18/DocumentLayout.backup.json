@@ -3,8 +3,8 @@
   "WorkspaceRootPath": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|c:\\users\\damia\\onedrive\\documents\\02 coding\\github\\estimator-rpa\\nuform.core\\services\\bomservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|solutionrelative:nuform.core\\services\\bomservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8AA7B24C-8E30-4C52-8DD4-1F45ABEC277A}|Nuform.Tests\\Nuform.Tests.csproj|c:\\users\\damia\\onedrive\\documents\\02 coding\\github\\estimator-rpa\\nuform.tests\\hardwaretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8AA7B24C-8E30-4C52-8DD4-1F45ABEC277A}|Nuform.Tests\\Nuform.Tests.csproj|solutionrelative:nuform.tests\\hardwaretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -31,14 +31,14 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "BomService.cs",
-              "DocumentMoniker": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Core\\Services\\BomService.cs",
-              "RelativeDocumentMoniker": "Nuform.Core\\Services\\BomService.cs",
-              "ToolTip": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Core\\Services\\BomService.cs",
-              "RelativeToolTip": "Nuform.Core\\Services\\BomService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACQAAAAlAAAAAAAAAA==",
+              "Title": "HardwareTests.cs",
+              "DocumentMoniker": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Tests\\HardwareTests.cs",
+              "RelativeDocumentMoniker": "Nuform.Tests\\HardwareTests.cs",
+              "ToolTip": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Tests\\HardwareTests.cs",
+              "RelativeToolTip": "Nuform.Tests\\HardwareTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-14T19:24:08.76Z",
+              "WhenOpened": "2025-09-14T19:32:45.882Z",
               "EditorCaption": ""
             }
           ]
