@@ -4,6 +4,13 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       mc:Ignorable="d">
+
+  <!-- Page-level resources -->
+  <Page.Resources>
+    <!-- Built-in converter: no custom codebehind needed -->
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+  </Page.Resources>
+
   <Grid Margin="16">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
@@ -18,19 +25,21 @@
       <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
         <Button Content="Open Calculations" Command="{Binding OpenCalculationsCommand}" Margin="0,0,8,0"/>
         <Button Content="Export PDF" Command="{Binding ExportPdfCommand}" Margin="0,0,8,0"/>
-        <!-- Rename the CSV export button to Export SOF to reflect the actual behaviour -->
+        <!-- Renamed to reflect behaviour -->
         <Button Content="Export SOF" Command="{Binding ExportCsvCommand}"/>
       </StackPanel>
     </StackPanel>
 
     <!-- Warning -->
-    <Border Grid.Row="1" CornerRadius="4" Padding="8" Background="#FFFDEEB4" BorderBrush="#FFE9C46A" BorderThickness="1"
+    <Border Grid.Row="1" CornerRadius="4" Padding="8"
+            Background="#FFFDEEB4" BorderBrush="#FFE9C46A" BorderThickness="1"
             Visibility="{Binding ShowOverageWarning, Converter={StaticResource BoolToVisibility}}">
       <TextBlock Text="Rounded total exceeds +7.5% of base. Adjust Extras or proceed." Foreground="#7A5A00" />
     </Border>
 
     <!-- Summary and BOM -->
     <StackPanel Grid.Row="2" Margin="0,12,0,12">
+
       <!-- Summary cards -->
       <Grid>
         <Grid.ColumnDefinitions>
@@ -39,27 +48,33 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
+
         <Border Margin="4" Padding="12" Background="#FFF7F7F7" BorderBrush="#FFE0E0E0" BorderThickness="1">
           <StackPanel>
             <TextBlock Text="Base Panels" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding BasePanels}" FontSize="18"/>
           </StackPanel>
         </Border>
+
         <Border Grid.Column="1" Margin="4" Padding="12" Background="#FFF7F7F7" BorderBrush="#FFE0E0E0" BorderThickness="1">
           <StackPanel>
             <TextBlock Text="Extras (%)" FontWeight="SemiBold"/>
             <DockPanel>
-              <TextBox Width="60" Text="{Binding ExtrasPercentText, UpdateSourceTrigger=PropertyChanged}" />
+              <!-- Assumes ExtrasPercentText is numeric-only (e.g., '7.5') -->
+              <TextBox Width="60"
+                       Text="{Binding ExtrasPercentText, UpdateSourceTrigger=PropertyChanged}" />
               <TextBlock Margin="6,0,0,0" Text="%" VerticalAlignment="Center"/>
             </DockPanel>
           </StackPanel>
         </Border>
+
         <Border Grid.Column="2" Margin="4" Padding="12" Background="#FFF7F7F7" BorderBrush="#FFE0E0E0" BorderThickness="1">
           <StackPanel>
             <TextBlock Text="Rounded Panels" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding RoundedPanels}" FontSize="18"/>
           </StackPanel>
         </Border>
+
         <Border Grid.Column="3" Margin="4" Padding="12" Background="#FFF7F7F7" BorderBrush="#FFE0E0E0" BorderThickness="1">
           <StackPanel>
             <TextBlock Text="Overage (%)" FontWeight="SemiBold"/>
@@ -69,17 +84,55 @@
       </Grid>
 
       <!-- BOM Table -->
-      <DataGrid ItemsSource="{Binding BillOfMaterials}" AutoGenerateColumns="False" IsReadOnly="False" Margin="0,12,0,0">
+      <DataGrid ItemsSource="{Binding BillOfMaterials}"
+                AutoGenerateColumns="False"
+                IsReadOnly="False"
+                Margin="0,12,0,0">
+
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Part #" Binding="{Binding PartNumber}" IsReadOnly="True" Width="*" />
-          <DataGridTextColumn Header="Name"   Binding="{Binding Name}"        IsReadOnly="True" Width="2*" />
-          <DataGridTextColumn Header="Suggested" Binding="{Binding SuggestedQty, StringFormat={}{0:N2}}" IsReadOnly="True" Width="Auto" />
-          <DataGridTextColumn Header="Change" Binding="{Binding Change, UpdateSourceTrigger=PropertyChanged}" Width="Auto" />
-          <DataGridTextColumn Header="Final"  Binding="{Binding FinalQty, StringFormat={}{0:N2}}" IsReadOnly="True" Width="Auto" />
-          <!-- New overage column allows users to see and edit the extra quantity per line item -->
-          <DataGridTextColumn Header="Overage" Binding="{Binding Overage, UpdateSourceTrigger=PropertyChanged}" Width="Auto" />
-          <DataGridTextColumn Header="Unit"   Binding="{Binding Unit}" Width="Auto" />
-          <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="Auto" />
+          <DataGridTextColumn Header="Part #"
+                              Binding="{Binding PartNumber}"
+                              IsReadOnly="True"
+                              Width="*" />
+
+          <DataGridTextColumn Header="Name"
+                              Binding="{Binding Name}"
+                              IsReadOnly="True"
+                              Width="2*" />
+
+          <DataGridTextColumn Header="Suggested"
+                              Binding="{Binding SuggestedQty, StringFormat={}{0:N2}}"
+                              IsReadOnly="True"
+                              Width="Auto" />
+
+          <!-- Change drives the canonical delta (accepts units or % syntax) -->
+          <DataGridTextColumn Header="Change" Width="Auto">
+            <DataGridTextColumn.Binding>
+              <Binding Path="Change" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged"/>
+            </DataGridTextColumn.Binding>
+          </DataGridTextColumn>
+
+          <!-- Read-only mirror of the same delta, rendered as percent -->
+          <DataGridTextColumn Header="Overage (%)"
+                              Binding="{Binding OveragePercent, StringFormat={}{0:N1}%}"
+                              IsReadOnly="True"
+                              Width="Auto" />
+
+          <!-- If you want bi-directional editing of percent, swap the column above for this one:
+          <DataGridTextColumn Header="Overage (%)" Width="Auto">
+            <DataGridTextColumn.Binding>
+              <Binding Path="OveragePercentText" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged"/>
+            </DataGridTextColumn.Binding>
+          </DataGridTextColumn>
+          -->
+
+          <DataGridTextColumn Header="Unit"
+                              Binding="{Binding Unit}"
+                              Width="Auto" />
+
+          <DataGridTextColumn Header="Category"
+                              Binding="{Binding Category}"
+                              Width="Auto" />
         </DataGrid.Columns>
       </DataGrid>
     </StackPanel>
