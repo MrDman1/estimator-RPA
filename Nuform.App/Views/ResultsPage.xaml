@@ -18,15 +18,15 @@
       <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
         <Button Content="Open Calculations" Command="{Binding OpenCalculationsCommand}" Margin="0,0,8,0"/>
         <Button Content="Export PDF" Command="{Binding ExportPdfCommand}" Margin="0,0,8,0"/>
-        <Button Content="Export CSV" Command="{Binding ExportCsvCommand}" />
+        <!-- Rename the CSV export button to Export SOF to reflect the actual behaviour -->
+        <Button Content="Export SOF" Command="{Binding ExportCsvCommand}"/>
       </StackPanel>
     </StackPanel>
 
     <!-- Warning -->
     <Border Grid.Row="1" CornerRadius="4" Padding="8" Background="#FFFDEEB4" BorderBrush="#FFE9C46A" BorderThickness="1"
             Visibility="{Binding ShowOverageWarning, Converter={StaticResource BoolToVisibility}}">
-      <TextBlock Text="Rounded total exceeds +7.5% of base. Adjust Extras or proceed."
-                 Foreground="#7A5A00" />
+      <TextBlock Text="Rounded total exceeds +7.5% of base. Adjust Extras or proceed." Foreground="#7A5A00" />
     </Border>
 
     <!-- Summary and BOM -->
@@ -39,14 +39,12 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-
         <Border Margin="4" Padding="12" Background="#FFF7F7F7" BorderBrush="#FFE0E0E0" BorderThickness="1">
           <StackPanel>
             <TextBlock Text="Base Panels" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding BasePanels}" FontSize="18"/>
           </StackPanel>
         </Border>
-
         <Border Grid.Column="1" Margin="4" Padding="12" Background="#FFF7F7F7" BorderBrush="#FFE0E0E0" BorderThickness="1">
           <StackPanel>
             <TextBlock Text="Extras (%)" FontWeight="SemiBold"/>
@@ -56,14 +54,12 @@
             </DockPanel>
           </StackPanel>
         </Border>
-
         <Border Grid.Column="2" Margin="4" Padding="12" Background="#FFF7F7F7" BorderBrush="#FFE0E0E0" BorderThickness="1">
           <StackPanel>
             <TextBlock Text="Rounded Panels" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding RoundedPanels}" FontSize="18"/>
           </StackPanel>
         </Border>
-
         <Border Grid.Column="3" Margin="4" Padding="12" Background="#FFF7F7F7" BorderBrush="#FFE0E0E0" BorderThickness="1">
           <StackPanel>
             <TextBlock Text="Overage (%)" FontWeight="SemiBold"/>
@@ -76,11 +72,12 @@
       <DataGrid ItemsSource="{Binding BillOfMaterials}" AutoGenerateColumns="False" IsReadOnly="False" Margin="0,12,0,0">
         <DataGrid.Columns>
           <DataGridTextColumn Header="Part #" Binding="{Binding PartNumber}" IsReadOnly="True" Width="*" />
-          <DataGridTextColumn Header="Name"   Binding="{Binding Name}"       IsReadOnly="True" Width="2*" />
+          <DataGridTextColumn Header="Name"   Binding="{Binding Name}"        IsReadOnly="True" Width="2*" />
           <DataGridTextColumn Header="Suggested" Binding="{Binding SuggestedQty, StringFormat={}{0:N2}}" IsReadOnly="True" Width="Auto" />
           <DataGridTextColumn Header="Change" Binding="{Binding Change, UpdateSourceTrigger=PropertyChanged}" Width="Auto" />
           <DataGridTextColumn Header="Final"  Binding="{Binding FinalQty, StringFormat={}{0:N2}}" IsReadOnly="True" Width="Auto" />
-          <DataGridTextColumn Header="Overage"  Binding="{Binding Overage, UpdateSourceTrigger=PropertyChanged}"  Width="Auto" />
+          <!-- New overage column allows users to see and edit the extra quantity per line item -->
+          <DataGridTextColumn Header="Overage" Binding="{Binding Overage, UpdateSourceTrigger=PropertyChanged}" Width="Auto" />
           <DataGridTextColumn Header="Unit"   Binding="{Binding Unit}" Width="Auto" />
           <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="Auto" />
         </DataGrid.Columns>

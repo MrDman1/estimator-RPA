@@ -28,24 +28,48 @@ namespace Nuform.Core.Domain
         }
 
         /// <summary>
-        /// Widthwise orientation: panels run across the width; panels/row is driven by building LENGTH.
-        /// H-Trim runs along building length between rows.
+        /// Widthwise orientation: panels run across the width; panels per row
+        /// are driven by the building length.  This patched version follows
+        /// the updated Nuform algorithm:
+        ///  * If width > 25 ft, defer to the lengthwise calculation (multiple rows).
+        ///  * If width > 20 ft and <= 25 ft, use a custom ship length equal to
+        ///    the width (rounded up) and a single row.
+        ///  * Otherwise, pick the nearest even standard length >= width and
+        ///    use a single row.  H-trim is not required when there is only one row.
         /// </summary>
         public static CeilingLayout ComputeWidthwise(double lengthFt, double widthFt, int panelWidthInches)
         {
+            // Defer to lengthwise when width exceeds 25 ft.
+            if (widthFt > 25.0)
+                return ComputeLengthwise(lengthFt, widthFt, panelWidthInches);
+
+            // Compute the number of panels per row using the building length.
             var panelsPerRow = CeilPanelsPerRow(lengthFt, panelWidthInches);
-            var rows = (int)Math.Ceiling(widthFt / 20.0);
-            if (rows < 1) rows = 1;
-            var shipLen = RoundUpToStandard(widthFt / rows);
+
+            int rows = 1;
+            int shipLen;
+
+            if (widthFt > 20.0)
+            {
+                // For widths greater than 20 ft and up to 25 ft, propose a custom
+                // shipping length equal to the width rounded up to the nearest foot.
+                shipLen = (int)Math.Ceiling(widthFt);
+            }
+            else
+            {
+                // Otherwise, choose the next even standard length at least as long as the width.
+                shipLen = RoundUpToStandard(widthFt);
+            }
+
+            // Total panels equals panels per row since rows=1; no H-trim needed.
             var totalPanels = panelsPerRow * rows;
-            var hTrimLF = Math.Max(0, rows - 1) * lengthFt;
+            double hTrimLF = 0.0;
             return new("Widthwise", rows, shipLen, panelsPerRow, totalPanels, hTrimLF);
         }
 
         /// <summary>
-        /// Lengthwise orientation: panels run along the building length; panels/row is driven by building WIDTH.
-        /// Choose rows/ship length to minimize cut waste.
-        /// H-Trim runs along building width between rows.
+        /// Lengthwise orientation: panels run along the building length; panels/row
+        /// is driven by building width.  Choose rows/ship length to minimize waste.
         /// </summary>
         public static CeilingLayout ComputeLengthwise(double lengthFt, double widthFt, int panelWidthInches)
         {
