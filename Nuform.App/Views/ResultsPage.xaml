@@ -80,6 +80,7 @@
           <DataGridTextColumn Header="Suggested" Binding="{Binding SuggestedQty, StringFormat={}{0:N2}}" IsReadOnly="True" Width="Auto" />
           <DataGridTextColumn Header="Change" Binding="{Binding Change, UpdateSourceTrigger=PropertyChanged}" Width="Auto" />
           <DataGridTextColumn Header="Final"  Binding="{Binding FinalQty, StringFormat={}{0:N2}}" IsReadOnly="True" Width="Auto" />
+          <DataGridTextColumn Header="Overage"  Binding="{Binding Overage, UpdateSourceTrigger=PropertyChanged}"  Width="Auto" />
           <DataGridTextColumn Header="Unit"   Binding="{Binding Unit}" Width="Auto" />
           <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="Auto" />
         </DataGrid.Columns>
