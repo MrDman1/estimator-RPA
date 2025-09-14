@@ -7,7 +7,8 @@ namespace Nuform.App.Models;
 public sealed class BomRow : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
-    private void OnChanged(string? n = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+    private void OnChanged(string? n = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
 
     public string PartNumber { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
@@ -16,7 +17,8 @@ public sealed class BomRow : INotifyPropertyChanged
 
     public decimal SuggestedQty { get; init; }
 
-    private string _change = "0"; // accepts +5, -2, 3
+    // The user-editable field. Accepts: "3", "+3", "-2", "5%", "-12.5%"
+    private string _change = "0";
     public string Change
     {
         get => _change;
@@ -25,45 +27,75 @@ public sealed class BomRow : INotifyPropertyChanged
             if (_change == value) return;
             _change = value;
             OnChanged(nameof(Change));
+            // change affects everything derived:
             OnChanged(nameof(FinalQty));
+            OnChanged(nameof(OverageUnits));
+            OnChanged(nameof(OveragePercent));     // for the percent column
+            OnChanged(nameof(OveragePercentText)); // if you expose it in the grid
         }
     }
 
-    public decimal FinalQty
+    // Parse 'Change' into a delta in UNITS.
+    private decimal ParseDeltaUnits()
     {
-        get
+        if (string.IsNullOrWhiteSpace(_change)) return 0m;
+        var s = _change.Trim();
+
+        // keep a leading '+' optional
+        if (s.StartsWith("+")) s = s.Substring(1);
+
+        var isPercent = s.EndsWith("%");
+        if (isPercent) s = s.Substring(0, s.Length - 1).Trim();
+
+        if (!decimal.TryParse(s, out var val)) return 0m;
+
+        if (isPercent)
         {
-            if (string.IsNullOrWhiteSpace(_change)) return SuggestedQty;
-            var s = _change.Trim();
-            if (s.StartsWith("+")) s = s.Substring(1);
-            if (!decimal.TryParse(s, out var delta))
-                return SuggestedQty; // invalid text ignored
-            if (_change.StartsWith("-")) delta = -Math.Abs(delta);
-            return SuggestedQty + delta;
+            // percent of SuggestedQty
+            return SuggestedQty == 0m ? 0m : (val / 100m) * SuggestedQty;
         }
+
+        // units
+        return val;
     }
 
-    /// <summary>
-    /// Extra quantity suggested beyond the base requirement.  For panel lines this
-    /// value represents the number of additional panels (rounded minus base).
-    /// For trim and accessory lines it reflects the excess linear footage or pieces
-    /// provided by rounding up to full packages.  This property can be edited by
-    /// the user to adjust overage per line item.  When updated, it raises
-    /// PropertyChanged so the UI reflects the change immediately.  Note that
-    /// changing overage does not automatically recompute SuggestedQty; it merely
-    /// stores the user’s override for display.
-    /// </summary>
-    private decimal _overage;
-    public decimal Overage
+    public decimal FinalQty => SuggestedQty + ParseDeltaUnits();
+
+    // Unified overage in units, mirrors the same delta shown by Change:
+    public decimal OverageUnits => ParseDeltaUnits();
+
+    // Unified overage in percent, always derived from the same delta:
+    public decimal OveragePercent =>
+        SuggestedQty == 0m ? 0m : (OverageUnits / SuggestedQty) * 100m;
+
+    // If you want to show a percent string in the grid:
+    public string OveragePercentText
     {
-        get => _overage;
+        get => $"{OveragePercent:N1}%";
         set
         {
-            if (_overage == value) return;
-            _overage = value;
-            OnChanged(nameof(Overage));
-            // Overages do not change FinalQty directly.  A UI could bind to this
-            // property and implement further logic if needed.
+            // Allow editing the percent column to drive the same canonical delta.
+            // Accepts "5", "5%", "-12.5", "-12.5%"
+            if (string.IsNullOrWhiteSpace(value)) return;
+            var s = value.Trim();
+            if (s.StartsWith("+")) s = s.Substring(1);
+            var endsWithPct = s.EndsWith("%");
+            if (endsWithPct) s = s.Substring(0, s.Length - 1).Trim();
+
+            if (!decimal.TryParse(s, out var pct)) return;
+
+            // Convert to a Change that represents the same delta.
+            // We’ll store 'Change' in percent form for clarity:
+            var normalized = pct.ToString("0.####") + "%";
+            if (_change != normalized)
+            {
+                _change = normalized;
+                OnChanged(nameof(Change));
+                OnChanged(nameof(FinalQty));
+                OnChanged(nameof(OverageUnits));
+                OnChanged(nameof(OveragePercent));
+                OnChanged(nameof(OveragePercentText));
+            }
         }
     }
 }
