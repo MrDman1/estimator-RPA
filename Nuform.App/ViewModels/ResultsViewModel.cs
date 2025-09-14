@@ -14,6 +14,10 @@ using Nuform.App.Services;
 using Nuform.App.Views;
 using Nuform.Core;
 
+// alias definitions restored for backwards compatibility
+using VmEstimateState = Nuform.App.ViewModels.EstimateState;
+using ServicesCatalogService = Nuform.Core.Services.CatalogService;
+
 namespace Nuform.App.ViewModels
 {
     /// <summary>
@@ -84,7 +88,8 @@ namespace Nuform.App.ViewModels
                         {
                             PartCode = row.PartNumber,
                             Quantity = (int)row.FinalQty,
-                            Units = row.Unit,
+                            // Units must be upper‑case to align with legacy expectations (e.g. PCS, LF).
+                            Units = string.IsNullOrEmpty(row.Unit) ? row.Unit : row.Unit.ToUpperInvariant(),
                             Description = row.Name
                         });
                     }
@@ -213,10 +218,17 @@ namespace Nuform.App.ViewModels
             foreach (var item in bom)
             {
                 string normCat = NormalizeCategory(item.Category);
-                decimal overage = 0m;
+                decimal overage;
+                // For panel items, compute the overage as the difference between rounded and base panels.
+                // For all other items, use the overage value computed by the BOM service (linear
+                // footage or piece count converted to a decimal).
                 if (normCat == "Panels")
                 {
                     overage = RoundedPanels - BasePanels;
+                }
+                else
+                {
+                    overage = item.Overage;
                 }
                 BillOfMaterials.Add(new BomRow
                 {
