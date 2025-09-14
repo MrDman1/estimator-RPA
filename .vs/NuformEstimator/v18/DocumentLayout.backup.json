@@ -3,12 +3,8 @@
   "WorkspaceRootPath": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|c:\\users\\damia\\onedrive\\documents\\02 coding\\github\\estimator-rpa\\nuform.app\\viewmodels\\resultsviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|solutionrelative:nuform.app\\viewmodels\\resultsviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|c:\\users\\damia\\onedrive\\documents\\02 coding\\github\\estimator-rpa\\nuform.core\\domain\\panelcoderesolver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|solutionrelative:nuform.core\\domain\\panelcoderesolver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|c:\\users\\damia\\onedrive\\documents\\02 coding\\github\\estimator-rpa\\nuform.core\\services\\bomservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|solutionrelative:nuform.core\\services\\bomservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,7 +14,7 @@
       "DocumentGroups": [
         {
           "DockedHeight": 371,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Bookmark",
@@ -29,29 +25,21 @@
               "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
             },
             {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "ResultsViewModel.cs",
-              "DocumentMoniker": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.App\\ViewModels\\ResultsViewModel.cs",
-              "RelativeDocumentMoniker": "Nuform.App\\ViewModels\\ResultsViewModel.cs",
-              "ToolTip": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.App\\ViewModels\\ResultsViewModel.cs",
-              "RelativeToolTip": "Nuform.App\\ViewModels\\ResultsViewModel.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAcAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-14T13:37:42.742Z",
-              "EditorCaption": ""
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "PanelCodeResolver.cs",
-              "DocumentMoniker": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Core\\Domain\\PanelCodeResolver.cs",
-              "RelativeDocumentMoniker": "Nuform.Core\\Domain\\PanelCodeResolver.cs",
-              "ToolTip": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Core\\Domain\\PanelCodeResolver.cs",
-              "RelativeToolTip": "Nuform.Core\\Domain\\PanelCodeResolver.cs",
-              "ViewState": "AgIAAB8AAAAAAAAAAAAWwCUAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 0,
+              "Title": "BomService.cs",
+              "DocumentMoniker": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Core\\Services\\BomService.cs",
+              "RelativeDocumentMoniker": "Nuform.Core\\Services\\BomService.cs",
+              "ToolTip": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Core\\Services\\BomService.cs",
+              "RelativeToolTip": "Nuform.Core\\Services\\BomService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACQAAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T01:09:26.007Z"
+              "WhenOpened": "2025-09-14T19:24:08.76Z",
+              "EditorCaption": ""
             }
           ]
         }

@@ -22,7 +22,10 @@
                 <DataGridComboBoxColumn Header="WallColor" SelectedItemBinding="{Binding WallPanelColor}" ItemsSource="{x:Static local:IntakePage.PanelColors}" />
                 <DataGridCheckBoxColumn Header="Ceiling" Binding="{Binding HasCeiling}" />
                 <DataGridTextColumn Header="CeilingLen" Binding="{Binding CeilingPanelLengthFt}" />
-                <DataGridComboBoxColumn Header="Orientation" SelectedItemBinding="{Binding CeilingOrientation}" ItemsSource="{x:Static local:IntakePage.CeilingOrientations}" />
+                <!-- Bind the ceiling orientation in TwoWay mode and commit changes immediately. -->
+                <DataGridComboBoxColumn Header="Orientation"
+                                        SelectedItemBinding="{Binding CeilingOrientation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        ItemsSource="{x:Static local:IntakePage.CeilingOrientations}" />
                 <DataGridComboBoxColumn Header="CeilColor" SelectedItemBinding="{Binding CeilingPanelColor}" ItemsSource="{x:Static local:IntakePage.PanelColors}" />
             </DataGrid.Columns>
         </DataGrid>

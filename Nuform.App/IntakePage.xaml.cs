@@ -87,6 +87,11 @@ namespace Nuform.App
                 CeilingPanelWidthInches = (int)room.PanelWidthInches,
                 CeilingPanelLengthFt = (decimal)room.CeilingPanelLengthFt,
                 CeilingPanelColor = PanelCodeResolver.ColorName(room.CeilingPanelColor),
+                // Propagate the orientation selected in the intake form so that
+                // downstream calculations (Estimator, BomService, CeilingCalc) can
+                // correctly distinguish widthwise vs. lengthwise ceilings.  Without
+                // this assignment the orientation defaults to Lengthwise.
+                CeilingOrientation = room.CeilingOrientation,
                 IncludeWallScrews = _state.Input.IncludeWallScrews,
                 IncludeCeilingScrews = _state.Input.IncludeCeilingScrews,
                 IncludePlugs = _state.Input.IncludePlugs,
