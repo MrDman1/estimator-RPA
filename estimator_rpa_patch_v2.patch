@@ -1,0 +1,150 @@
+*** Begin Patch
+*** Update File: Nuform.App/Models/BomRow.cs
+@@
+ public sealed class BomRow : INotifyPropertyChanged
+@@
+     public decimal FinalQty
+     {
+@@
+     }
++
++    /// <summary>
++    /// Extra quantity suggested beyond the base requirement.  For panel lines this
++    /// value represents the number of additional panels (rounded minus base).
++    /// For trim and accessory lines it defaults to 0 because the underlying BOM
++    /// does not expose raw linear‑footage calculations.  Consumers may bind to
++    /// this property to display overage per line item and allow manual
++    /// adjustment similar to the Change column.
++    /// </summary>
++    public decimal Overage { get; init; }
+*** End Patch
+*** Update File: Nuform.App/ViewModels/ResultsViewModel.cs
+@@
+-            ExportCsvCommand = new RelayCommand(_ => { });
++            ExportCsvCommand = new RelayCommand(_ =>
++            {
++                var dlg = new SaveFileDialog
++                {
++                    Title = "Save SOF File",
++                    Filter = "SOF|*.sof",
++                    FileName = $"estimate_parts_{DateTime.Now:yyyyMMdd_HHmm}.sof",
++                    AddExtension = true,
++                    OverwritePrompt = true
++                };
++                if (dlg.ShowDialog() == true)
++                {
++                    // Build SofPart list from the current BOM rows.  Use FinalQty to
++                    // capture any user changes.  Units and descriptions are taken
++                    // from the BOM row.
++                    var partsList = new List<SofPart>();
++                    foreach (BomRow row in BillOfMaterials)
++                    {
++                        partsList.Add(new SofPart
++                        {
++                            PartCode = row.PartNumber,
++                            Quantity = (int)row.FinalQty,
++                            Units = row.Unit,
++                            Description = row.Name
++                        });
++                    }
++                    var info = new SofCompanyInfo(); // use default blank info
++                    try
++                    {
++                        SofV2Writer.Write(dlg.FileName, info, partsList);
++                        MessageBox.Show($"SOF saved:\n{dlg.FileName}", "Export SOF");
++                    }
++                    catch (Exception ex)
++                    {
++                        MessageBox.Show($"Failed to save SOF file:\n{ex.Message}", "Export SOF Error");
++                    }
++                }
++            });
+*** End Patch
+*** Update File: Nuform.App/ViewModels/ResultsViewModel.cs
+@@
+ using Nuform.App.Models;
++using Nuform.Core;
++using System.Collections.Generic;
++using System.Linq;
+*** End Patch
+*** Update File: Nuform.App/ViewModels/ResultsViewModel.cs
+@@ private void Recalculate()
+-            foreach (var item in bom)
+-            {
+-                BillOfMaterials.Add(new BomRow
+-                {
+-                    PartNumber = item.PartNumber,
+-                    Name = item.Name,
+-                    SuggestedQty = item.Quantity,
+-                    Unit = item.Unit,
+-                    Category = item.Category,
+-                    Change = "0"
+-                });
+-            }
++            foreach (var item in bom)
++            {
++                // Normalize categories to one of the four top‑level categories.
++                string normCat = NormalizeCategory(item.Category);
++                // Compute overage for panel lines as the difference between rounded and base panels.
++                decimal overage = 0m;
++                if (normCat == "Panels")
++                {
++                    overage = RoundedPanels - BasePanels;
++                }
++                BillOfMaterials.Add(new BomRow
++                {
++                    PartNumber = item.PartNumber,
++                    Name = item.Name,
++                    SuggestedQty = item.Quantity,
++                    Unit = item.Unit,
++                    Category = normCat,
++                    Overage = overage,
++                    Change = "0"
++                });
++            }
+*** End Patch
+*** Update File: Nuform.App/ViewModels/ResultsViewModel.cs
+@@
+     private void Recalculate()
+@@
+         {
+@@
+         }
++
++        /// <summary>
++        /// Convert the detailed category names returned from the BOM service into the
++        /// four high‑level categories expected by the UI: Panels, Trim, Accessories
++        /// and Other.  Panels and Accessories are preserved; screws and hardware
++        /// map to Other; all remaining trim kinds map to Trim.
++        /// </summary>
++        private static string NormalizeCategory(string cat)
++        {
++            return cat switch
++            {
++                "Panels" => "Panels",
++                "Accessories" => "Accessories",
++                "Screws" => "Other",
++                _ => "Trim",
++            };
++        }
+*** End Patch
+*** Update File: Nuform.Core/Services/BomService.cs
+@@ if (input.Trims.JTrimEnabled)
+-            AddLF(wallTrimLF, (TrimKind.J, wallColor), wallPerimeter);
+-            AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsButtPerimeter);
+-            AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsWrappedPerimeter);
+-            AddLF(wallTrimLF, (TrimKind.OutsideCorner, wallColor), openingsWrappedPerimeter);
++            AddLF(wallTrimLF, (TrimKind.J, wallColor), wallPerimeter);
++            AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsButtPerimeter);
++            AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsWrappedPerimeter);
++            AddLF(wallTrimLF, (TrimKind.OutsideCorner, wallColor), openingsWrappedPerimeter);
++
++            // When ceiling panels are included and no ceiling transition trim is chosen,
++            // J‑Trim must also cover the top track and the ceiling track.  Add two extra
++            // runs of J‑Trim equal to the wall perimeter to the ceiling trim map.
++            if (input.IncludeCeilingPanels && result.Trims.CeilingTransition == null)
++            {
++                AddLF(ceilingTrimLF, (TrimKind.J, ceilingColor), wallPerimeter * 2);
++            }
+*** End Patch
+*** End Patch
