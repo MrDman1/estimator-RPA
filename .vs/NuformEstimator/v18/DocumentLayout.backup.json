@@ -1,12 +1,7 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\",
-  "Documents": [
-    {
-      "AbsoluteMoniker": "D:0:0:{8AA7B24C-8E30-4C52-8DD4-1F45ABEC277A}|Nuform.Tests\\Nuform.Tests.csproj|c:\\users\\damia\\onedrive\\documents\\02 coding\\github\\estimator-rpa\\nuform.tests\\hardwaretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8AA7B24C-8E30-4C52-8DD4-1F45ABEC277A}|Nuform.Tests\\Nuform.Tests.csproj|solutionrelative:nuform.tests\\hardwaretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    }
-  ],
+  "Documents": [],
   "DocumentGroupContainers": [
     {
       "Orientation": 1,
@@ -14,7 +9,7 @@
       "DocumentGroups": [
         {
           "DockedHeight": 371,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": -1,
           "Children": [
             {
               "$type": "Bookmark",
@@ -27,19 +22,6 @@
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "HardwareTests.cs",
-              "DocumentMoniker": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Tests\\HardwareTests.cs",
-              "RelativeDocumentMoniker": "Nuform.Tests\\HardwareTests.cs",
-              "ToolTip": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Tests\\HardwareTests.cs",
-              "RelativeToolTip": "Nuform.Tests\\HardwareTests.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-14T19:32:45.882Z",
-              "EditorCaption": ""
             }
           ]
         }
