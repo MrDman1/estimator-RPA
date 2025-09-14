@@ -15,17 +15,10 @@ using Nuform.Core;
 
 namespace Nuform.App.ViewModels
 {
-    /// <summary>
-    /// ResultsViewModel with:
-    /// - SOF export
-    /// - Panel overage visibility (contingency + rounding)
-    /// - Proper pack/box conversions for trim/screws
-    /// - Unified Overages (% over Base) that include initial contingency and user Change
-    /// </summary>
     public sealed class ResultsViewModel : INotifyPropertyChanged
     {
         public EstimateState State { get; }
-        private readonly CatalogService _catalog = new(); // still used by BomService.Build
+        private readonly CatalogService _catalog = new(); // used by BomService.Build
         private bool _catalogError;
 
         private decimal _extrasPercent;
@@ -175,8 +168,7 @@ namespace Nuform.App.ViewModels
             foreach (var item in bom)
             {
                 string normCat = NormalizeCategory(item.Category);
-
-                decimal suggested = item.Quantity;
+                decimal suggested = item.Quantity; // what the BOM recommends for THIS row
 
                 ComputePackagingAndBase(
                     normCat,
@@ -207,12 +199,13 @@ namespace Nuform.App.ViewModels
         }
 
         /// <summary>
-        /// For each item, determine pack/box sizing (from BOM dynamic fields if available), 
-        /// convert BOM "overage" to SAME UNITS as Suggested, and compute Base and InitialOverage.
+        /// Compute Base and InitialOverage in the SAME UNITS as 'suggested' for this row.
+        /// Panels: if per-row overage not provided, invert Extras% to expose the hidden bump.
+        /// Trim/Other: convert native overage (LF/pcs) to packs/boxes using metadata or defaults.
         /// </summary>
         private void ComputePackagingAndBase(
             string normCat,
-            dynamic item, // BOM service item (has Quantity, Overage, Category, Name, PartNumber, Unit)
+            dynamic item, // expected fields: Quantity, Overage, Category, Name, PartNumber, Unit (+ optional packaging fields)
             out decimal? packSize,
             out string packBasis,
             out decimal baseQtyUnits,
@@ -224,27 +217,44 @@ namespace Nuform.App.ViewModels
 
             if (normCat == "Panels")
             {
-                // Panels: show hidden contingency+rounding explicitly
-                suggested = RoundedPanels;
-                baseQtyUnits = BasePanels;
-                initialOverageUnits = suggested - baseQtyUnits;
+                // Prefer a per-row overage if the BOM supplies it
+                decimal perRowOverage = 0m;
+                try { perRowOverage = (decimal)item.Overage; } catch { /* ignore */ }
+
+                if (perRowOverage > 0m)
+                {
+                    baseQtyUnits = suggested - perRowOverage;
+                    if (baseQtyUnits < 0m) baseQtyUnits = 0m;
+                    initialOverageUnits = suggested - baseQtyUnits; // equals perRowOverage
+                }
+                else
+                {
+                    // BOM did not provide per-row panel overage → derive from Extras%
+                    var factor = 1m + (decimal)State.Input.ExtraPercent / 100m;
+                    if (factor <= 0m) factor = 1m;
+
+                    // Approximate pre-extras base; round to whole panels.
+                    baseQtyUnits = Math.Round(suggested / factor, 0, MidpointRounding.AwayFromZero);
+                    if (baseQtyUnits < 0m) baseQtyUnits = 0m;
+
+                    initialOverageUnits = suggested - baseQtyUnits; // shows the hidden contingency/rounding
+                }
                 return;
             }
 
-            // Try to read packaging info directly from 'item' (if BOM carries it)
+            // === Non-panels: Trim / Other / Accessories ===
             if (!TryGetCatalogPackagingFromItem(item, out packSize, out packBasis))
             {
-                // Heuristics / defaults
                 if (normCat == "Trim")
                 {
-                    packSize = 160m; // e.g., 10 sticks × 16’ = 160 LF/pack
+                    packSize = 160m; // 10 sticks × 16' = 160 LF/pack (fallback)
                     packBasis = "LF";
                 }
                 else if (normCat == "Other" &&
                          item.Name is string n &&
                          n.IndexOf("screw", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    packSize = 500m; // 500 pcs/box
+                    packSize = 500m; // 500 pcs/box (fallback)
                     packBasis = "pcs";
                 }
                 else
@@ -254,17 +264,18 @@ namespace Nuform.App.ViewModels
                 }
             }
 
-            decimal overageNative = item.Overage;
+            decimal overageNative = 0m;
+            try { overageNative = (decimal)item.Overage; } catch { /* ignore */ }
 
             if (packSize.HasValue && packSize.Value > 0m && !string.IsNullOrEmpty(packBasis))
             {
-                // Suggested is in packs/boxes; convert native overage (LF or pcs) back to packs/boxes.
+                // Suggested is in packs/boxes; convert native (LF/pcs) to packs/boxes
                 baseQtyUnits = suggested - (overageNative / packSize.Value);
                 initialOverageUnits = suggested - baseQtyUnits;
             }
             else
             {
-                // No packaging info — assume same units.
+                // No packaging info; assume overage is in the same units
                 baseQtyUnits = suggested - overageNative;
                 initialOverageUnits = overageNative;
             }
@@ -273,9 +284,11 @@ namespace Nuform.App.ViewModels
         }
 
         /// <summary>
-        /// Reads packaging fields directly off the BOM 'item' using reflection/dynamic:
-        /// supports: PackLf (decimal), PiecesPerBox (int), StickLengthFt (decimal), SticksPerPack (int).
-        /// Returns true if any recognized packaging is found.
+        /// Try to read packaging info directly from the BOM item.
+        /// Recognized fields:
+        ///   - PackLf (decimal): LF per pack (trim)
+        ///   - PiecesPerBox (int): pieces per box (screws)
+        ///   - StickLengthFt (decimal) + SticksPerPack (int): derive LF/pack
         /// </summary>
         private static bool TryGetCatalogPackagingFromItem(
             dynamic item,
@@ -285,22 +298,16 @@ namespace Nuform.App.ViewModels
             packSize = null;
             packBasis = string.Empty;
 
-            // Helpers to safely read dynamic properties
             static bool TryGetProp<T>(object obj, string name, out T value)
             {
                 value = default!;
                 var type = obj?.GetType();
                 if (type == null) return false;
-
                 var prop = type.GetProperty(name);
                 if (prop == null) return false;
 
                 var raw = prop.GetValue(obj);
-                if (raw is T t)
-                {
-                    value = t;
-                    return true;
-                }
+                if (raw is T t) { value = t; return true; }
 
                 try
                 {
@@ -315,7 +322,6 @@ namespace Nuform.App.ViewModels
                 return false;
             }
 
-            // LF-based packs
             if (TryGetProp<decimal>(item, "PackLf", out var lf) && lf > 0m)
             {
                 packSize = lf;
@@ -323,7 +329,6 @@ namespace Nuform.App.ViewModels
                 return true;
             }
 
-            // Piece-based boxes
             if (TryGetProp<int>(item, "PiecesPerBox", out var ppb) && ppb > 0)
             {
                 packSize = ppb;
@@ -331,12 +336,11 @@ namespace Nuform.App.ViewModels
                 return true;
             }
 
-            // Sticks × length (derive LF/pack)
             var haveStickLen = TryGetProp<decimal>(item, "StickLengthFt", out var stickFt) && stickFt > 0m;
             var haveStickCount = TryGetProp<int>(item, "SticksPerPack", out var sticks) && sticks > 0;
             if (haveStickLen && haveStickCount)
             {
-                packSize = stickFt * sticks;
+                packSize = stickFt * sticks; // LF per pack
                 packBasis = "LF";
                 return true;
             }
@@ -387,21 +391,17 @@ namespace Nuform.App.ViewModels
             System.Windows.Application.Current.MainWindow.Content = intake;
         }
 
-        // === INotifyPropertyChanged ===
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged(string name) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-        /// <summary>
-        /// Map detailed BOM categories to UI buckets.
-        /// </summary>
         private static string NormalizeCategory(string cat)
         {
             return cat switch
             {
                 "Panels" => "Panels",
                 "Accessories" => "Accessories",
-                "Screws" => "Other", // screws under Other per your UI
+                "Screws" => "Other",
                 _ => "Trim",
             };
         }
