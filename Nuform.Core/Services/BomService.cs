@@ -14,7 +14,8 @@ public static class BomService
         var list = new List<BomLineItem>();
         missing = false;
 
-        void Add(PartSpec spec, decimal qty, string? cat = null)
+        // Add a BOM line item, including overage (linear footage or quantity difference) when available.
+        void Add(PartSpec spec, decimal qty, string? cat = null, decimal overage = 0m)
         {
             list.Add(new BomLineItem
             {
@@ -22,7 +23,8 @@ public static class BomService
                 Name = spec.Description,
                 Quantity = qty,
                 Unit = spec.Units,
-                Category = cat ?? spec.Category
+                Category = cat ?? spec.Category,
+                Overage = overage
             });
         }
 
@@ -48,7 +50,7 @@ public static class BomService
                 LengthFt = (int)input.WallPanelLengthFt,
                 Category = "Panels"
             };
-            Add(spec, result.Panels.RoundedPanels, "Panels");
+            Add(spec, result.Panels.RoundedPanels, "Panels", 0m);
             wallPanelLf = result.Panels.RoundedPanels * (decimal)spec.LengthFt;
         }
         catch (Exception)
@@ -60,14 +62,17 @@ public static class BomService
         // Ceiling panels (auto length + orientation; store H-Trim LF to add later)
         if (input.IncludeCeilingPanels)
         {
+            // Determine panel width in feet: 12" => 1.0, 18" => 1.5.
             decimal ftPerPanel = input.CeilingPanelWidthInches == 18 ? 1.5m : 1.0m;
 
-            // Round up to the nearest standard shipping length between 10–20 ft, even only.
+            // Round up to the nearest standard shipping length between 10–20 ft (even).  Used for
+            // lengthwise orientation and widthwise when width <= 20.
             int RoundUpStd(decimal ft)
             {
                 int v = (int)Math.Ceiling(ft);
                 if (v < 10) v = 10;
                 if (v > 20) v = 20;
+                // Ensure even (panels come in 2-ft increments)
                 if (v % 2 == 1) v += 1;
                 if (v == 11) v = 12;
                 if (v == 13) v = 14;
@@ -76,94 +81,178 @@ public static class BomService
                 return v;
             }
 
-            // Orientation handling: swap L/W when Widthwise so the math is identical.
-            decimal Lx = (decimal)input.Length;
-            decimal Wx = (decimal)input.Width;
+            // Determine the building dimensions as decimals.
+            decimal buildingLength = (decimal)input.Length;
+            decimal buildingWidth = (decimal)input.Width;
+
+            // Decide if the ceiling should run along the length (lengthwise) or width (widthwise).
             bool isLengthwise = input.CeilingOrientation == CeilingOrientation.Lengthwise;
-            if (!isLengthwise)
-                (Lx, Wx) = (Wx, Lx);
 
-            // Panels per row across the perpendicular (panel widths)
-            int panelsPerRow = (int)Math.Ceiling(Wx / ftPerPanel);
-
-            // Optional manual panel length override from the UI (CeilingLen / CeilingPanelLengthFt).
-            int? userLen = null;
-            try
-            {
-                var t = input.GetType();
-                var p = t.GetProperty("CeilingPanelLengthFt") ?? t.GetProperty("CeilingLen") ?? t.GetProperty("CeilingLengthFt");
-                if (p != null)
-                {
-                    var val = p.GetValue(input);
-                    if (val is int iv) userLen = iv;
-                    else if (val is double dv) userLen = (int)Math.Round(dv);
-                    else if (val is decimal mv) userLen = (int)Math.Ceiling(mv);
-                }
-            }
-            catch { /* ignore and fall back to computed */ }
-
+            // Placeholder for computed row/column counts and shipping length.
             int rows;
+            int panelsPerRow;
             int shipLen;
 
-            // If user specified a valid shipping length (10,12,14,16,18,20), respect it.
-            if (userLen.HasValue && userLen.Value >= 10 && userLen.Value <= 20 && userLen.Value % 2 == 0)
+            // Widthwise ceilings: run panels along the width dimension.  If the width exceeds 25 ft,
+            // revert to the lengthwise algorithm.  Otherwise choose a shipping length based on the
+            // width; there is always only one row.
+            if (!isLengthwise)
             {
-                shipLen = userLen.Value;
-                rows = (int)Math.Ceiling(Lx / shipLen);
-            }
-            else
-            {
-                // Choose rows (panel lengths) to minimize waste with 10–20 ft standard lengths
-                int minRows = (int)Math.Ceiling(Lx / 20m);
-                int maxRows = (int)Math.Ceiling(Lx / 10m);
-                if (maxRows < minRows) maxRows = minRows;
-
-                int bestRows = minRows, bestShip = 20;
-                decimal bestWaste = decimal.MaxValue;
-                for (int r = minRows; r <= maxRows; r++)
+                // If building width > 25 ft, treat orientation as lengthwise and fall back to
+                // the same algorithm used for lengthwise ceilings (multiple rows and shipping
+                // lengths based on the length dimension).  In this case, we simply swap the
+                // dimensions and set isLengthwise = true below.
+                if (buildingWidth > 25m)
                 {
-                    var s = RoundUpStd(Lx / r);
-                    var waste = r * s - Lx;
-                    if (waste < bestWaste || (Math.Abs(waste - bestWaste) < 0.0001m && s > bestShip))
-                    { bestWaste = waste; bestShip = s; bestRows = r; }
+                    isLengthwise = true;
+                }
+                else
+                {
+                    // For widths up to 25 ft, choose the shipping length.  If width > 20 ft,
+                    // use a custom length equal to the ceiling width rounded up to the next
+                    // whole foot (this avoids splitting into multiple rows).  Otherwise, use
+                    // the nearest even standard length >= width.
+                    if (buildingWidth > 20m)
+                    {
+                        shipLen = (int)Math.Ceiling(buildingWidth);
+                    }
+                    else
+                    {
+                        shipLen = RoundUpStd(buildingWidth);
+                    }
+
+                    // Only one row when widthwise: panels run across the building width.  The number
+                    // of panels per row is based on the building length divided by the panel width.
+                    rows = 1;
+                    panelsPerRow = (int)Math.Ceiling(buildingLength / ftPerPanel);
+
+                    // Calculate total panels and apply the extra percentage.
+                    int totalPanels = panelsPerRow * rows;
+                    var extraPercent = (decimal)(input.ExtraPercent ?? CalcSettings.DefaultExtraPercent);
+                    var withExtra = totalPanels * (1m + extraPercent / 100m);
+                    int baseCeiling = (int)Math.Ceiling(withExtra);
+                    roundedCeiling = CalcService.RoundPanels(baseCeiling);
+                    chosenCeilShipLen = shipLen;
+
+                    try
+                    {
+                        var color = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
+                        var (code, name) = PanelCodeResolver.PanelSku(input.CeilingPanelWidthInches, shipLen, color);
+                        var spec = new PartSpec
+                        {
+                            PartNumber = code,
+                            Description = name,
+                            Units = "PCS",
+                            LengthFt = shipLen,
+                            Category = "Panels"
+                        };
+                        Add(spec, roundedCeiling, "Panels");
+                        ceilingPanelLf = roundedCeiling * (decimal)spec.LengthFt;
+                    }
+                    catch
+                    {
+                        missing = true;
+                        Console.Error.WriteLine("Missing ceiling panel specification");
+                    }
+
+                    // Widthwise orientation uses a single row, so no H‑trim is required between rows.
+                    pendingCeilingHlf = 0.0;
+                }
+            }
+
+            // Lengthwise algorithm (or reverted widthwise when width > 25 ft): choose rows and
+            // shipping length to minimize waste using standard 10–20 ft even lengths.  This
+            // algorithm replicates the original logic but avoids swapping L/W because the
+            // dimensions are used directly.
+            if (isLengthwise)
+            {
+                // For lengthwise orientation, panels run along the length dimension.  The
+                // number of panels per row is based on the building width divided by the
+                // panel width.
+                panelsPerRow = (int)Math.Ceiling(buildingWidth / ftPerPanel);
+
+                // Optional manual override (CeilingPanelLengthFt).  If provided and valid (even
+                // between 10 and 20 ft), use it; otherwise compute rows and shipping length
+                // automatically.
+                int? userLen = null;
+                try
+                {
+                    var t = input.GetType();
+                    var p = t.GetProperty("CeilingPanelLengthFt") ?? t.GetProperty("CeilingLen") ?? t.GetProperty("CeilingLengthFt");
+                    if (p != null)
+                    {
+                        var val = p.GetValue(input);
+                        if (val is int iv) userLen = iv;
+                        else if (val is double dv) userLen = (int)Math.Round(dv);
+                        else if (val is decimal mv) userLen = (int)Math.Ceiling(mv);
+                    }
+                }
+                catch { /* ignore manual override and fall back to computed */ }
+
+                if (userLen.HasValue && userLen.Value >= 10 && userLen.Value <= 20 && userLen.Value % 2 == 0)
+                {
+                    shipLen = userLen.Value;
+                    rows = (int)Math.Ceiling(buildingLength / shipLen);
+                }
+                else
+                {
+                    // Choose rows to minimize waste across standard lengths.  A higher number of
+                    // rows implies shorter shipping lengths.
+                    int minRows = (int)Math.Ceiling(buildingLength / 20m);
+                    int maxRows = (int)Math.Ceiling(buildingLength / 10m);
+                    if (maxRows < minRows) maxRows = minRows;
+
+                    int bestRows = minRows;
+                    int bestShip = 20;
+                    decimal bestWaste = decimal.MaxValue;
+                    for (int r = minRows; r <= maxRows; r++)
+                    {
+                        int s = RoundUpStd(buildingLength / r);
+                        decimal waste = r * s - buildingLength;
+                        if (waste < bestWaste || (Math.Abs(waste - bestWaste) < 0.0001m && s > bestShip))
+                        {
+                            bestWaste = waste;
+                            bestShip = s;
+                            bestRows = r;
+                        }
+                    }
+                    rows = bestRows;
+                    shipLen = bestShip;
                 }
 
-                rows = bestRows;
-                shipLen = bestShip;
-            }
+                int totalPanels = panelsPerRow * rows;
+                var extraPercent = (decimal)(input.ExtraPercent ?? CalcSettings.DefaultExtraPercent);
+                var withExtra = totalPanels * (1m + extraPercent / 100m);
+                int baseCeiling = (int)Math.Ceiling(withExtra);
+                roundedCeiling = CalcService.RoundPanels(baseCeiling);
+                chosenCeilShipLen = shipLen;
 
-            int totalPanels = panelsPerRow * rows;
-
-            var extraPercent = (decimal)(input.ExtraPercent ?? CalcSettings.DefaultExtraPercent);
-            var withExtra = totalPanels * (1m + extraPercent / 100m);
-            int baseCeiling = (int)Math.Ceiling(withExtra);
-            roundedCeiling = CalcService.RoundPanels(baseCeiling);
-            chosenCeilShipLen = shipLen;
-
-            try
-            {
-                var color = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
-                var (code, name) = PanelCodeResolver.PanelSku(input.CeilingPanelWidthInches, shipLen, color);
-                var spec = new PartSpec
+                try
                 {
-                    PartNumber = code,
-                    Description = name,
-                    Units = "pcs",
-                    LengthFt = shipLen,
-                    Category = "Panels"
-                };
-                Add(spec, roundedCeiling, "Panels");
-                ceilingPanelLf = roundedCeiling * (decimal)spec.LengthFt;
-            }
-            catch
-            {
-                missing = true;
-                Console.Error.WriteLine("Missing ceiling panel specification");
-            }
+                    var color = PanelCodeResolver.ParseColor(input.CeilingPanelColor);
+                    var (code, name) = PanelCodeResolver.PanelSku(input.CeilingPanelWidthInches, shipLen, color);
+                    var spec = new PartSpec
+                    {
+                        PartNumber = code,
+                        Description = name,
+                        Units = "PCS",
+                        LengthFt = shipLen,
+                        Category = "Panels"
+                    };
+                    Add(spec, roundedCeiling, "Panels");
+                    ceilingPanelLf = roundedCeiling * (decimal)spec.LengthFt;
+                }
+                catch
+                {
+                    missing = true;
+                    Console.Error.WriteLine("Missing ceiling panel specification");
+                }
 
-            // H-trim runs along the perpendicular span between rows.
-            decimal hTrimLF = Math.Max(0, rows - 1) * Wx;
-            pendingCeilingHlf = rows > 1 ? (double)hTrimLF : 0.0;
+                // H‑trim runs along the perpendicular span between rows.  Only add H‑trim if there
+                // is more than one row.
+                decimal hTrimLF = Math.Max(0, rows - 1) * buildingWidth;
+                pendingCeilingHlf = rows > 1 ? (double)hTrimLF : 0.0;
+            }
         }
 
         // Trim LF aggregation
@@ -190,18 +279,18 @@ public static class BomService
 
         if (input.Trims.JTrimEnabled)
         {
-            AddLF(wallTrimLF, (TrimKind.J, wallColor), wallPerimeter);
-            AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsButtPerimeter);
-            AddLF(wallTrimLF, (TrimKind.J, wallColor), openingsWrappedPerimeter);
-            AddLF(wallTrimLF, (TrimKind.OutsideCorner, wallColor), openingsWrappedPerimeter);
-
-            // Patched: when ceiling panels are included and no ceiling transition trim is chosen,
-            // J-Trim must also cover the top track and the ceiling track.  Add two extra
-            // runs of J-Trim equal to the wall perimeter to the ceiling trim map.
+            // Compute total J-Trim LF for bottom track and openings
+            double jlf = wallPerimeter + openingsButtPerimeter + openingsWrappedPerimeter;
+            // Add the base J-Trim requirement (bottom track)
+            AddLF(wallTrimLF, (TrimKind.J, wallColor), jlf);
+            // If a ceiling is present and no transition trim is selected, J-Trim must cover
+            // both the top track and the ceiling track.  Add two extra runs.
             if (input.IncludeCeilingPanels && result.Trims.CeilingTransition == null)
             {
-                AddLF(ceilingTrimLF, (TrimKind.J, ceilingColor), wallPerimeter * 2);
+                AddLF(wallTrimLF, (TrimKind.J, wallColor), jlf * 2.0);
             }
+            // Outside corners still require their own trim kind
+            AddLF(wallTrimLF, (TrimKind.OutsideCorner, wallColor), openingsWrappedPerimeter);
         }
 
         var insideCorners = CalcService.ComputeInsideCorners(input);
@@ -248,7 +337,10 @@ public static class BomService
             else
             {
                 var packs = Math.Ceiling(lf / (spec.PackPieces * lenFt));
-                Add(spec, (decimal)packs);
+                // Compute overage in linear feet: provided LF minus required LF
+                var providedLf = packs * (spec.PackPieces * lenFt);
+                var over = (decimal)providedLf - (decimal)lf;
+                Add(spec, (decimal)packs, null, over);
             }
         }
 
@@ -274,7 +366,9 @@ public static class BomService
             else
             {
                 var packs = Math.Ceiling(lf / (spec.PackPieces * lenFt));
-                Add(spec, (decimal)packs);
+                var providedLf = packs * (spec.PackPieces * lenFt);
+                var over = (decimal)providedLf - (decimal)lf;
+                Add(spec, (decimal)packs, null, over);
             }
         }
 
@@ -287,14 +381,25 @@ public static class BomService
         {
             var pkgs = CalcScrewPackages(wallPanelLf, trimLfTotal, 2.0);
             if (pkgs > 0)
-                Add(catalog.GetHardware("HPR016AANA"), pkgs, "Screws");
+            {
+                // Overages for screws measured in pieces: each box contains 500 pieces.
+                var piecesRequired = (decimal)((double)(wallPanelLf + trimLfTotal) / 2.0);
+                var piecesProvided = (decimal)pkgs * 500m;
+                var overScrews = piecesProvided - piecesRequired;
+                Add(catalog.GetHardware("HPR016AANA"), pkgs, "Screws", overScrews);
+            }
         }
 
         if (input.IncludeCeilingScrews)
         {
             var pkgs = CalcScrewPackages(ceilingPanelLf, trimLfTotal, 1.5);
             if (pkgs > 0)
-                Add(catalog.GetHardware("HPR017AANA"), pkgs, "Screws");
+            {
+                var piecesRequired = (decimal)((double)(ceilingPanelLf + trimLfTotal) / 1.5);
+                var piecesProvided = (decimal)pkgs * 500m;
+                var overScrews = piecesProvided - piecesRequired;
+                Add(catalog.GetHardware("HPR017AANA"), pkgs, "Screws", overScrews);
+            }
         }
 
         if (input.IncludePlugs)
