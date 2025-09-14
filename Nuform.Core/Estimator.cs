@@ -199,11 +199,56 @@ public class Estimator
             int qty; double panelLen;
             if (room.CeilingOrientation == CeilingOrientation.Widthwise)
             {
-                var panelsPerRow = (int)Math.Ceiling(room.WidthFt / room.CeilingPanelLengthFt);
-                var rows = (int)Math.Ceiling(room.LengthFt / panelWidthFt);
+                double ftPerPanel = PanelWidthFt(room.PanelWidthInches); // 1.0 for 12", 1.5 for 18"
+                double width = room.WidthFt;
+                double length = room.LengthFt;
+            
+                // If the width exceeds 25 ft, revert to the lengthwise logic by jumping to the else-block below.
+                if (width > 25)
+                {
+                    goto Lengthwise; // see note below
+                }
+            
+                // Determine the shipping length for widthwise ceilings.
+                double desired = room.CeilingPanelLengthFt;
+                double proposed;
+                if (width > 20)
+                {
+                    // For widths >20 ft but ≤25 ft propose a custom length equal to the width rounded up.
+                    proposed = Math.Ceiling(width);
+                }
+                else
+                {
+                    // Otherwise, choose the next even standard length ≥ the width (10, 12, 14, 16, 18 or 20 ft).
+                    double w = Math.Ceiling(width);
+                    if (w < 10) w = 10;
+                    if (w > 20) w = 20;
+                    if ((int)w % 2 != 0) w += 1;
+                    proposed = w;
+                }
+            
+                // If the user supplied a ceiling length that is shorter than the width or isn’t an even number between 10 and 20, ignore it and use proposed.
+                if (desired < width || desired % 2 != 0 || desired < 10 || desired > 20)
+                {
+                    panelLen = proposed;
+                }
+                else
+                {
+                    // Otherwise use the supplied length, but make sure it isn’t shorter than the width.
+                    panelLen = desired < width ? proposed : desired;
+                }
+            
+                // Widthwise ceilings have one row; panels run along the length of the building.
+                int panelsPerRow = (int)Math.Ceiling(length / ftPerPanel);
+                int rows = 1;
                 qty = (int)Math.Ceiling(panelsPerRow * rows * (1 + input.Options.Contingency));
-                panelLen = room.CeilingPanelLengthFt;
             }
+            else
+            {
+            Lengthwise:
+                // existing lengthwise logic stays here
+            }
+
             else
             {
                 var perRow = Math.Ceiling(room.WidthFt / panelWidthFt);
