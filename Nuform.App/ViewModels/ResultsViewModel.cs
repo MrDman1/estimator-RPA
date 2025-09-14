@@ -25,7 +25,7 @@ namespace Nuform.App.ViewModels
     public sealed class ResultsViewModel : INotifyPropertyChanged
     {
         public EstimateState State { get; }
-        private readonly CatalogService _catalog = new();
+        private readonly CatalogService _catalog = new(); // still used by BomService.Build
         private bool _catalogError;
 
         private decimal _extrasPercent;
@@ -41,7 +41,7 @@ namespace Nuform.App.ViewModels
 
             OpenCalculationsCommand = new RelayCommand(_ =>
             {
-                var vm  = new CalculationsViewModel(State);
+                var vm = new CalculationsViewModel(State);
                 var win = new CalculationsWindow { DataContext = vm };
                 win.Owner = Application.Current.MainWindow;
                 win.Show();
@@ -83,7 +83,7 @@ namespace Nuform.App.ViewModels
                         {
                             PartCode = row.PartNumber,
                             Quantity = (int)Math.Round(row.FinalQty, MidpointRounding.AwayFromZero),
-                            Units    = string.IsNullOrEmpty(row.Unit) ? row.Unit : row.Unit.ToUpperInvariant(),
+                            Units = string.IsNullOrEmpty(row.Unit) ? row.Unit : row.Unit.ToUpperInvariant(),
                             Description = row.Name
                         });
                     }
@@ -101,18 +101,18 @@ namespace Nuform.App.ViewModels
                 }
             });
 
-            BackCommand   = new RelayCommand(_ => NavigateBack());
-            ResetCommand  = new RelayCommand(_ => ResetToIntake());
+            BackCommand = new RelayCommand(_ => NavigateBack());
+            ResetCommand = new RelayCommand(_ => ResetToIntake());
             FinishCommand = new RelayCommand(_ => System.Windows.Application.Current.Shutdown());
 
             State.Updated += Recalculate;
             Recalculate();
         }
 
-        public int     BasePanels            { get; private set; }
-        public int     RoundedPanels         { get; private set; }
+        public int BasePanels { get; private set; }
+        public int RoundedPanels { get; private set; }
         public decimal OveragePercentRounded { get; private set; }
-        public bool    ShowOverageWarning    { get; private set; }
+        public bool ShowOverageWarning { get; private set; }
 
         public decimal ExtrasPercent
         {
@@ -146,20 +146,20 @@ namespace Nuform.App.ViewModels
         public bool CatalogError => _catalogError;
 
         public ICommand OpenCalculationsCommand { get; }
-        public ICommand ExportPdfCommand        { get; }
-        public ICommand ExportCsvCommand        { get; }
-        public ICommand BackCommand             { get; }
-        public ICommand ResetCommand            { get; }
-        public ICommand FinishCommand           { get; }
+        public ICommand ExportPdfCommand { get; }
+        public ICommand ExportCsvCommand { get; }
+        public ICommand BackCommand { get; }
+        public ICommand ResetCommand { get; }
+        public ICommand FinishCommand { get; }
 
         private void Recalculate()
         {
             State.Result = CalcService.CalcEstimate(State.Input);
 
-            BasePanels            = State.Result.Panels.BasePanels;
-            RoundedPanels         = State.Result.Panels.RoundedPanels;
+            BasePanels = State.Result.Panels.BasePanels;
+            RoundedPanels = State.Result.Panels.RoundedPanels;
             OveragePercentRounded = (decimal)State.Result.Panels.OveragePercentRounded;
-            ShowOverageWarning    = State.Result.Panels.WarnExceedsConfigured;
+            ShowOverageWarning = State.Result.Panels.WarnExceedsConfigured;
 
             OnPropertyChanged(nameof(BasePanels));
             OnPropertyChanged(nameof(RoundedPanels));
@@ -174,14 +174,10 @@ namespace Nuform.App.ViewModels
 
             foreach (var item in bom)
             {
-                // Normalize to UI category
                 string normCat = NormalizeCategory(item.Category);
 
-                // Default: assume Suggested is what BOM gave us
                 decimal suggested = item.Quantity;
 
-                // We'll compute BaseQtyUnits in SAME UNITS as suggested.
-                // For Panels it's clear (panels). For Trim/Screws we convert LF/pieces overage to packs/boxes.
                 ComputePackagingAndBase(
                     normCat,
                     item,
@@ -194,16 +190,16 @@ namespace Nuform.App.ViewModels
 
                 BillOfMaterials.Add(new BomRow
                 {
-                    PartNumber          = item.PartNumber,
-                    Name                = item.Name,
-                    SuggestedQty        = suggested,
-                    BaseQtyUnits        = baseQtyUnits,
+                    PartNumber = item.PartNumber,
+                    Name = item.Name,
+                    SuggestedQty = suggested,
+                    BaseQtyUnits = baseQtyUnits,
                     InitialOverageUnits = initialOverageUnits,
-                    Unit                = item.Unit,
-                    Category            = normCat,
-                    PackSize            = packSize,
-                    PackBasis           = packBasis,
-                    Change              = "0"
+                    Unit = item.Unit,
+                    Category = normCat,
+                    PackSize = packSize,
+                    PackBasis = packBasis,
+                    Change = "0"
                 });
             }
 
@@ -211,8 +207,8 @@ namespace Nuform.App.ViewModels
         }
 
         /// <summary>
-        /// For each item, determine pack/box sizing (catalog-aware), convert BOM "overage"
-        /// to SAME UNITS as Suggested, and compute Base and InitialOverage.
+        /// For each item, determine pack/box sizing (from BOM dynamic fields if available), 
+        /// convert BOM "overage" to SAME UNITS as Suggested, and compute Base and InitialOverage.
         /// </summary>
         private void ComputePackagingAndBase(
             string normCat,
@@ -223,113 +219,126 @@ namespace Nuform.App.ViewModels
             out decimal initialOverageUnits,
             ref decimal suggested)
         {
-            packSize  = null;
+            packSize = null;
             packBasis = string.Empty;
 
             if (normCat == "Panels")
             {
-                // Panels: Suggested should reflect RoundedPanels; Base is BasePanels.
-                suggested            = RoundedPanels;
-                baseQtyUnits         = BasePanels;
-                initialOverageUnits  = suggested - baseQtyUnits; // shows contingency + rounding
+                // Panels: show hidden contingency+rounding explicitly
+                suggested = RoundedPanels;
+                baseQtyUnits = BasePanels;
+                initialOverageUnits = suggested - baseQtyUnits;
                 return;
             }
 
-            // Non-panels (Trim/Other/Accessories): try to pull pack metadata from Catalog.
-            // We support both catalog-derived sizes and robust fallbacks.
-            if (!TryGetCatalogPackaging(item, out packSize, out packBasis))
+            // Try to read packaging info directly from 'item' (if BOM carries it)
+            if (!TryGetCatalogPackagingFromItem(item, out packSize, out packBasis))
             {
-                // Heuristics / fallbacks (kept conservative)
+                // Heuristics / defaults
                 if (normCat == "Trim")
                 {
-                    packSize  = 160m; // e.g., 10 sticks × 16' → 160 LF per pack
+                    packSize = 160m; // e.g., 10 sticks × 16’ = 160 LF/pack
                     packBasis = "LF";
                 }
                 else if (normCat == "Other" &&
                          item.Name is string n &&
                          n.IndexOf("screw", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    packSize  = 500m; // 500 pcs per box
+                    packSize = 500m; // 500 pcs/box
                     packBasis = "pcs";
                 }
                 else
                 {
-                    // No conversion context; treat overage as same units as Suggested.
-                    packSize  = null;
+                    packSize = null;
                     packBasis = string.Empty;
                 }
             }
 
-            // Convert BOM overage (usually LF or pcs) to packs/boxes if we know pack size.
-            // item.Overage is assumed to be "native units" (LF for trim; pcs for screws; etc).
             decimal overageNative = item.Overage;
 
             if (packSize.HasValue && packSize.Value > 0m && !string.IsNullOrEmpty(packBasis))
             {
-                // Suggested here is ALREADY in packs/boxes (from BOM).
-                // Base = Suggested - (overageNative / packSize)
-                baseQtyUnits        = suggested - (overageNative / packSize.Value);
+                // Suggested is in packs/boxes; convert native overage (LF or pcs) back to packs/boxes.
+                baseQtyUnits = suggested - (overageNative / packSize.Value);
                 initialOverageUnits = suggested - baseQtyUnits;
             }
             else
             {
-                // Fall back: assume overage is in same units as Suggested.
-                baseQtyUnits        = suggested - overageNative;
+                // No packaging info — assume same units.
+                baseQtyUnits = suggested - overageNative;
                 initialOverageUnits = overageNative;
             }
 
-            // Guard against negative base (can happen with rounding)
             if (baseQtyUnits < 0m) baseQtyUnits = 0m;
         }
 
         /// <summary>
-        /// Attempts to read packaging info from the catalog. If your CatalogService
-        /// exposes richer metadata, map it here. This version looks for common fields
-        /// and falls back gracefully.
+        /// Reads packaging fields directly off the BOM 'item' using reflection/dynamic:
+        /// supports: PackLf (decimal), PiecesPerBox (int), StickLengthFt (decimal), SticksPerPack (int).
+        /// Returns true if any recognized packaging is found.
         /// </summary>
-        private bool TryGetCatalogPackaging(dynamic item, out decimal? packSize, out string packBasis)
+        private static bool TryGetCatalogPackagingFromItem(
+            dynamic item,
+            out decimal? packSize,
+            out string packBasis)
         {
-            packSize  = null;
+            packSize = null;
             packBasis = string.Empty;
 
-            try
+            // Helpers to safely read dynamic properties
+            static bool TryGetProp<T>(object obj, string name, out T value)
             {
-                // Prefer an explicit catalog lookup if available.
-                var cat = _catalog.Get(item.PartNumber); // Adjust if your CatalogService uses a different API
+                value = default!;
+                var type = obj?.GetType();
+                if (type == null) return false;
 
-                // Example mappings — adapt these to your actual catalog model:
-                // - cat.PackLf      : decimal? (LF per pack)
-                // - cat.PiecesPerBox: int?
-                // - cat.Unit        : "pkg"/"pcs"/...
+                var prop = type.GetProperty(name);
+                if (prop == null) return false;
 
-                // LF-based packs (trim, moldings)
-                if (cat?.PackLf is decimal lf && lf > 0m)
+                var raw = prop.GetValue(obj);
+                if (raw is T t)
                 {
-                    packSize  = lf;
-                    packBasis = "LF";
+                    value = t;
                     return true;
                 }
 
-                // Piece-based boxes (screws, fasteners)
-                if (cat?.PiecesPerBox is int ppb && ppb > 0)
+                try
                 {
-                    packSize  = ppb;
-                    packBasis = "pcs";
-                    return true;
+                    if (raw != null)
+                    {
+                        value = (T)Convert.ChangeType(raw, typeof(T));
+                        return true;
+                    }
                 }
+                catch { /* ignore */ }
 
-                // Some catalogs carry stick-length × count (e.g., 10 × 16ft)
-                if (cat?.StickLengthFt is decimal stickFt && stickFt > 0m &&
-                    cat?.SticksPerPack is int sticks && sticks > 0)
-                {
-                    packSize  = stickFt * sticks; // LF per pack
-                    packBasis = "LF";
-                    return true;
-                }
+                return false;
             }
-            catch
+
+            // LF-based packs
+            if (TryGetProp<decimal>(item, "PackLf", out var lf) && lf > 0m)
             {
-                // Catalog lookup failed or API not available; fall through to false.
+                packSize = lf;
+                packBasis = "LF";
+                return true;
+            }
+
+            // Piece-based boxes
+            if (TryGetProp<int>(item, "PiecesPerBox", out var ppb) && ppb > 0)
+            {
+                packSize = ppb;
+                packBasis = "pcs";
+                return true;
+            }
+
+            // Sticks × length (derive LF/pack)
+            var haveStickLen = TryGetProp<decimal>(item, "StickLengthFt", out var stickFt) && stickFt > 0m;
+            var haveStickCount = TryGetProp<int>(item, "SticksPerPack", out var sticks) && sticks > 0;
+            if (haveStickLen && haveStickCount)
+            {
+                packSize = stickFt * sticks;
+                packBasis = "LF";
+                return true;
             }
 
             return false;
@@ -390,10 +399,10 @@ namespace Nuform.App.ViewModels
         {
             return cat switch
             {
-                "Panels"      => "Panels",
+                "Panels" => "Panels",
                 "Accessories" => "Accessories",
-                "Screws"      => "Other", // screws under Other per your UI
-                _             => "Trim",
+                "Screws" => "Other", // screws under Other per your UI
+                _ => "Trim",
             };
         }
     }
