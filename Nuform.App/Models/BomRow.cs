@@ -46,10 +46,24 @@ public sealed class BomRow : INotifyPropertyChanged
     /// <summary>
     /// Extra quantity suggested beyond the base requirement.  For panel lines this
     /// value represents the number of additional panels (rounded minus base).
-    /// For trim and accessory lines it defaults to 0 because the underlying BOM
-    /// does not expose raw linear-footage calculations.  Consumers may bind to
-    /// this property to display overage per line item and allow manual
-    /// adjustment similar to the Change column.
+    /// For trim and accessory lines it reflects the excess linear footage or pieces
+    /// provided by rounding up to full packages.  This property can be edited by
+    /// the user to adjust overage per line item.  When updated, it raises
+    /// PropertyChanged so the UI reflects the change immediately.  Note that
+    /// changing overage does not automatically recompute SuggestedQty; it merely
+    /// stores the user’s override for display.
     /// </summary>
-    public decimal Overage { get; init; }
+    private decimal _overage;
+    public decimal Overage
+    {
+        get => _overage;
+        set
+        {
+            if (_overage == value) return;
+            _overage = value;
+            OnChanged(nameof(Overage));
+            // Overages do not change FinalQty directly.  A UI could bind to this
+            // property and implement further logic if needed.
+        }
+    }
 }

@@ -14,9 +14,8 @@ using Nuform.App.Services;
 using Nuform.App.Views;
 using Nuform.Core;
 
-// alias definitions restored for backwards compatibility
-using VmEstimateState = Nuform.App.ViewModels.EstimateState;
-using ServicesCatalogService = Nuform.Core.Services.CatalogService;
+// Import the EstimateState view‑model and use direct type names to avoid alias duplication
+using Nuform.App.ViewModels;
 
 namespace Nuform.App.ViewModels
 {
@@ -28,14 +27,14 @@ namespace Nuform.App.ViewModels
     /// </summary>
     public sealed class ResultsViewModel : INotifyPropertyChanged
     {
-        public VmEstimateState State { get; }
-        private readonly ServicesCatalogService _catalog = new();
+        public EstimateState State { get; }
+        private readonly CatalogService _catalog = new();
         private bool _catalogError;
 
         private decimal _extrasPercent;
         private string _extrasPercentText = "5";
 
-        public ResultsViewModel(VmEstimateState state)
+        public ResultsViewModel(EstimateState state)
         {
             State = state ?? throw new ArgumentNullException(nameof(state));
 
