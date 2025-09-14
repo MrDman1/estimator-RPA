@@ -1,0 +1,297 @@
+diff --git a/Nuform.App/Models/BomRow.cs b/Nuform.App/Models/BomRow.cs
+index 1111111..2222222 100644
+--- a/Nuform.App/Models/BomRow.cs
++++ b/Nuform.App/Models/BomRow.cs
+@@ -11,6 +11,8 @@ public sealed class BomRow : INotifyPropertyChanged
+     public string Name { get; init; } = "";
+     public string Unit { get; init; } = "";
+     public string Category { get; init; } = "";
++
++    public decimal Overage { get; init; }  // new: show per-line overage in LF or pcs
+
+     public decimal SuggestedQty { get; init; }
+
+diff --git a/Nuform.App/ViewModels/ResultsViewModel.cs b/Nuform.App/ViewModels/ResultsViewModel.cs
+index 1111111..2222222 100644
+--- a/Nuform.App/ViewModels/ResultsViewModel.cs
++++ b/Nuform.App/ViewModels/ResultsViewModel.cs
+@@ -6,6 +6,7 @@ using System.Windows;
+ using System.Windows.Input;
+ using Microsoft.Win32;
+ using Nuform.Core.Domain;
++using Nuform.Core; // SofV2Writer
+ using Nuform.Core.Services;
+ using Nuform.App.Models;
+ using Nuform.App.Services;
+@@ -57,7 +58,43 @@ namespace Nuform.App.ViewModels
+                 }
+             });
+
+-            ExportCsvCommand = new RelayCommand(_ => { });
++            // Export .SOF (legacy Component Order file)
++            ExportCsvCommand = new RelayCommand(_ =>
++            {
++                var dlg = new SaveFileDialog
++                {
++                    Title = "Export Component Order (.sof)",
++                    Filter = "Component Order|*.sof",
++                    FileName = $"estimate_{DateTime.Now:yyyyMMdd_HHmm}.sof",
++                    AddExtension = true,
++                    OverwritePrompt = true
++                };
++                if (dlg.ShowDialog() == true)
++                {
++                    try
++                    {
++                        // Build SofPart list from visible BOM
++                        var parts = BillOfMaterials.Select(b => new SofPart
++                        {
++                            PartCode = b.PartNumber,
++                            Quantity = (int)Math.Ceiling(b.FinalQty),
++                            Units = b.Unit,
++                            Description = b.Name
++                        }).ToList();
++
++                        var info = new SofCompanyInfo
++                        {
++                            Venture = State.Input?.Customer ?? "",
++                            ModelName = State.Input?.ProjectName ?? "",
++                            Location = State.Input?.Location ?? "",
++                        };
++
++                        SofV2Writer.Write(dlg.FileName, info, parts);
++                        MessageBox.Show($"SOF exported:\n{dlg.FileName}", "Export SOF");
++                    }
++                    catch (Exception ex)
++                    {
++                        MessageBox.Show($"Export failed:\n{ex.Message}", "Export SOF");
++                    }
++                }
++            });
+
+             BackCommand = new RelayCommand(_ =>
+             {
+@@ -171,12 +208,14 @@ namespace Nuform.App.ViewModels
+             BillOfMaterials.Clear();
+             foreach (var item in bom)
+             {
+                 BillOfMaterials.Add(new BomRow
+                 {
+                     PartNumber = item.PartNumber,
+                     Name = item.Name,
+                     SuggestedQty = item.Quantity,
+                     Unit = item.Unit,
+-                    Category = item.Category,
++                    Category = item.Category, // normalized to Panels/Trim/Accessories/Other
++                    Overage = item.Overage,   // new: show per-line overage
+                     Change = "0"
+                 });
+             }
+             OnPropertyChanged(nameof(BillOfMaterials));
+diff --git a/Nuform.Core/Services/BomService.cs b/Nuform.Core/Services/BomService.cs
+index 1111111..2222222 100644
+--- a/Nuform.Core/Services/BomService.cs
++++ b/Nuform.Core/Services/BomService.cs
+@@ -1,5 +1,6 @@
+ using System;
+ using System.Collections.Generic;
++using System.Linq;
+ using Nuform.Core.Domain;
+
+ namespace Nuform.Core.Services;
+@@ -150,6 +151,34 @@ public static class BomService
+         };
+     }
+
++    private static string NormalizeCategory(string raw)
++    {
++        // Collapse to the four required categories
++        if (string.Equals(raw, "Panel", StringComparison.OrdinalIgnoreCase)) return "Panels";
++        if (raw.Equals("Screws", StringComparison.OrdinalIgnoreCase)) return "Other";
++        if (raw.Equals("Accessories", StringComparison.OrdinalIgnoreCase)) return "Accessories";
++        // Everything else is trim (J, H, corners, cove, crown/base, transition, dripedge, etc.)
++        return "Trim";
++    }
++
++    private static decimal ComputeOverage(string category, decimal requiredLfOrPcs, decimal providedLfOrPcs)
++        => Math.Max(0, providedLfOrPcs - requiredLfOrPcs);
++
+     public static IEnumerable<BomItem> Build(InputModel input, ResultModel result, CatalogService catalog, out bool missing)
+     {
+         missing = false;
+         var list = new List<BomItem>();
+
++        // --- Panels ---
+         foreach (var kv in result.PanelLines)
+         {
+             var spec = catalog.FindPanel(input.Color, kv.WidthInches, kv.LengthFt);
+             if (spec is null) { missing = true; continue; }
+-            list.Add(new BomItem(spec.PartNumber, spec.Description, spec.Units, kv.Qty, spec.Category));
++            // Panels are in pieces; overage = (rounded - base) pieces
++            var overagePcs = Math.Max(0, kv.Qty - kv.BaseQty);
++            list.Add(new BomItem(spec.PartNumber, spec.Description, spec.Units, kv.Qty, NormalizeCategory(spec.Category))
++            {
++                Overage = overagePcs
++            });
+         }
+
++        // --- Trims ---
+         foreach (var t in result.TrimLines)
+         {
+             var spec = catalog.FindByCategoryAndLength(input.Color, t.Category, t.LengthFt);
+             if (spec is null) { missing = true; continue; }
+-            list.Add(new BomItem(spec.PartNumber, spec.Description, spec.Units, t.Packs, spec.Category));
++            // Provided LF is packs * pieces/pack * lengthFt
++            var providedLf = (decimal)(t.Packs * spec.PackPieces * spec.LengthFt);
++            var overage = ComputeOverage("Trim", (decimal)t.RequiredLF, providedLf);
++            list.Add(new BomItem(spec.PartNumber, spec.Description, spec.Units, t.Packs, NormalizeCategory(spec.Category))
++            {
++                Overage = overage
++            });
+         }
+
++        // --- Accessories & screws ---
+         foreach (var a in result.AccessoryLines)
+         {
+             var spec = catalog.GetHardware(a.Code);
+-            list.Add(new BomItem(spec.PartNumber, spec.Description, spec.Units, a.Packs, spec.Category));
++            var provided = (decimal)(a.Packs * Math.Max(1, spec.PackPieces));
++            var overage = ComputeOverage(spec.Category, (decimal)a.RequiredPieces, provided);
++            list.Add(new BomItem(spec.PartNumber, spec.Description, spec.Units, a.Packs, NormalizeCategory(spec.Category))
++            {
++                Overage = overage
++            });
+         }
+
+         return list;
+@@ -200,6 +229,28 @@ public static class BomService
+         // Ceiling transition: if present, DO NOT add J-Trim again; instead add the chosen transition trim LF.
+         if (input.Trims.CeilingTransition != null)
+         {
+             var lf = result.PerimeterLF;
+             AddTrim("Transition", lf);
+             return;
+         }
+
+-        // No transition trim => J-Trim surrounds bottom, top and ceiling (3x perimeter) + openings perimeter for BUTT
+-        var jLf = 3 * result.PerimeterLF + result.OpeningsPerimeterLF;
++        // No transition trim => J-Trim surrounds bottom, top and ceiling (3x perimeter) + openings perimeter for BUTT
++        var jLf = 3 * result.PerimeterLF + result.OpeningsPerimeterLF;
+         AddTrim("J", jLf);
+     }
+
++    // Widthwise ceilings: if rows == 1 then NO H-Trim required.
++    private static int ComputeHTrimPacksForCeiling(int rows, double lengthFt, CatalogService catalog, string color)
++    {
++        if (rows <= 1) return 0; // one row => no H-Trim
++        var spec = catalog.FindByCategoryAndLength(color, "H", lengthFt);
++        if (spec is null) return 0;
++        // minimal pack rounding just as before
++        return 1;
++    }
++
+diff --git a/Nuform.Core/Estimator.cs b/Nuform.Core/Estimator.cs
+index 1111111..2222222 100644
+--- a/Nuform.Core/Estimator.cs
++++ b/Nuform.Core/Estimator.cs
+@@ -129,22 +129,46 @@ public class Estimator
+-            // J-trim around wall perimeter
+-            jtrimLF = netLF * (1 + input.Options.Contingency);
++            // J-Trim / Ceiling transition logic:
++            // If a ceiling is present and NO transition trim is selected, J-Trim must cover:
++            // bottom track + top track + ceiling track => 3 x perimeter (+ openings perimeter for BUTT)
++            // If a transition trim (cove/crown-base/F) is selected, J-Trim multiplier is 1 and the transition trim LF = perimeter.
++            double openingsPerimeterLF = 0; // TODO: accumulate from input.Openings with BUTT treatment
++            var perimeter = 2 * (input.Rooms.First().LengthFt + input.Rooms.First().WidthFt);
++            bool transitionSelected = false; // TODO: read from input if using UI state that exposes the chosen transition
++            if (room.HasCeiling)
++            {
++                jtrimLF = (transitionSelected ? 1 : 3) * perimeter + openingsPerimeterLF;
++            }
++            else
++            {
++                jtrimLF = perimeter + openingsPerimeterLF;
++            }
+             var jItem = CatalogService.FindItem(catalog, "J-Trim", lengthChoice, color);
+             if (jItem != null)
+             {
+                 int packs = (int)Math.Ceiling(jtrimLF / jItem.LFPerPack);
+                 result.Trims.JTrimPacks = packs;
+                 result.Trims.JTrimPackLenFt = (int)lengthChoice;
+                 result.Parts.Add(new PartRequirement
+                 {
+                     PartCode = jItem.PartCode,
+                     QtyPacks = packs,
+                     LFNeeded = jtrimLF,
+                     TotalLFProvided = packs * jItem.LFPerPack
+                 });
+             }
+
+@@ -194,18 +218,42 @@ public class Estimator
+-            if (room.CeilingOrientation == CeilingOrientation.Widthwise)
+-            {
+-                var panelsPerRow = (int)Math.Ceiling(room.WidthFt / room.CeilingPanelLengthFt);
+-                var rows = (int)Math.Ceiling(room.LengthFt / panelWidthFt);
+-                qty = (int)Math.Ceiling(panelsPerRow * rows * (1 + input.Options.Contingency));
+-                panelLen = room.CeilingPanelLengthFt;
+-            }
+-            else
+-            {
+-                var perRow = Math.Ceiling(room.WidthFt / panelWidthFt);
+-                var rows = Math.Ceiling(room.LengthFt / room.CeilingPanelLengthFt);
+-                qty = (int)Math.Ceiling(perRow * rows * (1 + input.Options.Contingency));
+-                panelLen = room.CeilingPanelLengthFt;
+-            }
++            if (room.CeilingOrientation == CeilingOrientation.Widthwise)
++            {
++                // Widthwise: panels run across the WIDTH; rows advance along the LENGTH.
++                // Auto-correct the entered ceiling length to the nearest valid even length (10–20 ft)
++                double desired = room.CeilingPanelLengthFt;
++                int[] std = new[] {10,12,14,16,18,20};
++                int valid = std.Aggregate(std[0], (best, v) =>
++                    Math.Abs(v - desired) < Math.Abs(best - desired) ? v : best);
++                // Ensure panel length is at least the width; bump up to next standard size if needed
++                if (valid < Math.Ceiling(room.WidthFt)) valid = std.First(v => v >= Math.Ceiling(room.WidthFt));
++                // If width exceeds 25 ft, revert to lengthwise logic
++                if (room.WidthFt > 25)
++                {
++                    var perRow = Math.Ceiling(room.WidthFt / panelWidthFt);
++                    var rows = Math.Ceiling(room.LengthFt / desired);
++                    qty = (int)Math.Ceiling(perRow * rows * (1 + input.Options.Contingency));
++                    panelLen = desired;
++                }
++                else
++                {
++                    var panelsPerRow = 1; // since valid >= width, it’s one panel across
++                    var rows = (int)Math.Ceiling(room.LengthFt / panelWidthFt);
++                    qty = (int)Math.Ceiling(panelsPerRow * rows * (1 + input.Options.Contingency));
++                    panelLen = valid;
++                    // One row across the width => no H-Trim needed
++                }
++            }
++            else
++            {
++                // Lengthwise logic (existing behaviour)
++                var perRow = Math.Ceiling(room.WidthFt / panelWidthFt);
++                var rows = Math.Ceiling(room.LengthFt / room.CeilingPanelLengthFt);
++                qty = (int)Math.Ceiling(perRow * rows * (1 + input.Options.Contingency));
++                panelLen = room.CeilingPanelLengthFt;
++            }
+
+             if (result.CeilingPanels.ContainsKey(panelLen))
+                 result.CeilingPanels[panelLen] += qty;
+             else
+                 result.CeilingPanels[panelLen] = qty;
+
+             topTrackLF += 2 * (room.LengthFt + room.WidthFt);
+diff --git a/Nuform.App/Views/ResultsPage.xaml b/Nuform.App/Views/ResultsPage.xaml
+index 1111111..2222222 100644
+--- a/Nuform.App/Views/ResultsPage.xaml
++++ b/Nuform.App/Views/ResultsPage.xaml
+@@ -50,6 +50,7 @@
+         <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="50" />
+         <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="80"/>
++        <DataGridTextColumn Header="Overage" Binding="{Binding Overage}" Width="80"/>
+         <DataGridTextColumn Header="Change" Binding="{Binding Change}" Width="80"/>
+     </DataGrid.Columns>
+ </DataGrid>
