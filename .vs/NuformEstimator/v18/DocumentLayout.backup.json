@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|c:\\users\\damia\\onedrive\\documents\\02 coding\\github\\estimator-rpa\\nuform.core\\services\\bomservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E17A1994-8878-43B5-B8B6-3E0B888A8A35}|Nuform.Core\\Nuform.Core.csproj|solutionrelative:nuform.core\\services\\bomservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|c:\\users\\damia\\onedrive\\documents\\02 coding\\github\\estimator-rpa\\nuform.app\\viewmodels\\resultsviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{F3524D29-8385-4153-9975-C8A5C3AAB341}|Nuform.App\\Nuform.App.csproj|solutionrelative:nuform.app\\viewmodels\\resultsviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -14,8 +18,21 @@
       "DocumentGroups": [
         {
           "DockedHeight": 371,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 0,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "BomService.cs",
+              "DocumentMoniker": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Core\\Services\\BomService.cs",
+              "RelativeDocumentMoniker": "Nuform.Core\\Services\\BomService.cs",
+              "ToolTip": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.Core\\Services\\BomService.cs*",
+              "RelativeToolTip": "Nuform.Core\\Services\\BomService.cs*",
+              "ViewState": "AgIAAMwAAAAAAAAAAAAQwNoAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T18:20:12.073Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
@@ -26,13 +43,13 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "ResultsViewModel.cs",
               "DocumentMoniker": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.App\\ViewModels\\ResultsViewModel.cs",
               "RelativeDocumentMoniker": "Nuform.App\\ViewModels\\ResultsViewModel.cs",
               "ToolTip": "C:\\Users\\damia\\OneDrive\\Documents\\02 Coding\\GitHub\\estimator-RPA\\Nuform.App\\ViewModels\\ResultsViewModel.cs",
               "RelativeToolTip": "Nuform.App\\ViewModels\\ResultsViewModel.cs",
-              "ViewState": "AgIAAIIBAAAAAAAAAAAUwJgBAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAIIBAAAAAAAAAAAUwIwBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-09-14T17:13:52.434Z",
               "EditorCaption": ""
