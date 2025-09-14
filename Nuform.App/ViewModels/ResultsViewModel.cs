@@ -231,14 +231,15 @@ namespace Nuform.App.ViewModels
                 }
                 BillOfMaterials.Add(new BomRow
                 {
-                    PartNumber = item.PartNumber,
-                    Name = item.Name,
-                    SuggestedQty = item.Quantity,
-                    Unit = item.Unit,
-                    Category = normCat,
-                    Overage = overage,
-                    Change = "0"
-                });
+                    var startDelta = overage; // units
+                    BillOfMaterials.Add(new BomRow {
+                        PartNumber = item.PartNumber,
+                        Name = item.Name,
+                        SuggestedQty = item.Quantity,
+                        Unit = item.Unit,
+                        Category = normCat,
+                        Change = startDelta == 0m ? "0" : (startDelta > 0 ? $"+{startDelta}" : startDelta.ToString())
+                    });
             }
             OnPropertyChanged(nameof(BillOfMaterials));
             _catalogError = missing;
