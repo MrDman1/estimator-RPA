@@ -14,15 +14,15 @@ using Nuform.App.Services;
 using Nuform.App.Views;
 using Nuform.Core;
 
-// Import the EstimateState view‑model and use direct type names to avoid alias duplication
+// Import the EstimateState view-model and use direct type names to avoid alias duplication
 using Nuform.App.ViewModels;
 
 namespace Nuform.App.ViewModels
 {
     /// <summary>
     /// Patched ResultsViewModel implementing SOF export, overage calculation and
-    /// category normalization.  This version replaces the stubbed ExportCsvCommand
-    /// and adds a NormalizeCategory helper.  It also computes the overage for
+    /// category normalization. This version replaces the stubbed ExportCsvCommand
+    /// and adds a NormalizeCategory helper. It also computes the overage for
     /// panel lines (rounded minus base panels).
     /// </summary>
     public sealed class ResultsViewModel : INotifyPropertyChanged
@@ -67,7 +67,7 @@ namespace Nuform.App.ViewModels
                 }
             });
 
-            // Implement SOF export using SofV2Writer.  Builds parts list from BOM rows.
+            // Implement SOF export using SofV2Writer. Builds parts list from BOM rows.
             ExportCsvCommand = new RelayCommand(_ =>
             {
                 var dlg = new SaveFileDialog
@@ -87,11 +87,12 @@ namespace Nuform.App.ViewModels
                         {
                             PartCode = row.PartNumber,
                             Quantity = (int)row.FinalQty,
-                            // Units must be upper‑case to align with legacy expectations (e.g. PCS, LF).
+                            // Units must be upper-case to align with legacy expectations (e.g. PCS, LF).
                             Units = string.IsNullOrEmpty(row.Unit) ? row.Unit : row.Unit.ToUpperInvariant(),
                             Description = row.Name
                         });
                     }
+
                     var info = new SofCompanyInfo();
                     try
                     {
@@ -214,33 +215,30 @@ namespace Nuform.App.ViewModels
 
             var bom = BomService.Build(State.Input, State.Result, _catalog, out var missing);
             BillOfMaterials.Clear();
+
             foreach (var item in bom)
             {
                 string normCat = NormalizeCategory(item.Category);
-                decimal overage;
+
                 // For panel items, compute the overage as the difference between rounded and base panels.
                 // For all other items, use the overage value computed by the BOM service (linear
                 // footage or piece count converted to a decimal).
-                if (normCat == "Panels")
-                {
-                    overage = RoundedPanels - BasePanels;
-                }
-                else
-                {
-                    overage = item.Overage;
-                }
+                decimal overage = normCat == "Panels"
+                    ? RoundedPanels - BasePanels
+                    : item.Overage;
+
+                var startDelta = overage; // units
                 BillOfMaterials.Add(new BomRow
                 {
-                    var startDelta = overage; // units
-                    BillOfMaterials.Add(new BomRow {
-                        PartNumber = item.PartNumber,
-                        Name = item.Name,
-                        SuggestedQty = item.Quantity,
-                        Unit = item.Unit,
-                        Category = normCat,
-                        Change = startDelta == 0m ? "0" : (startDelta > 0 ? $"+{startDelta}" : startDelta.ToString())
-                    });
+                    PartNumber = item.PartNumber,
+                    Name = item.Name,
+                    SuggestedQty = item.Quantity,
+                    Unit = item.Unit,
+                    Category = normCat,
+                    Change = startDelta == 0m ? "0" : (startDelta > 0 ? $"+{startDelta}" : startDelta.ToString())
+                });
             }
+
             OnPropertyChanged(nameof(BillOfMaterials));
             _catalogError = missing;
             OnPropertyChanged(nameof(CatalogError));
@@ -252,8 +250,8 @@ namespace Nuform.App.ViewModels
 
         /// <summary>
         /// Convert the detailed category names returned from the BOM service into the
-        /// four high‑level categories expected by the UI: Panels, Trim, Accessories
-        /// and Other.  Panels and Accessories are preserved; screws and hardware
+        /// four high-level categories expected by the UI: Panels, Trim, Accessories
+        /// and Other. Panels and Accessories are preserved; screws and hardware
         /// map to Other; all remaining trim kinds map to Trim.
         /// </summary>
         private static string NormalizeCategory(string cat)
