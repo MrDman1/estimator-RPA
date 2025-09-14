@@ -13,9 +13,6 @@ using Nuform.App.Models;
 using Nuform.App.Services;
 using Nuform.App.Views;
 using Nuform.Core;
-// alias definitions restored for backwards compatibility
-using VmEstimateState = Nuform.App.ViewModels.EstimateState;
-using ServicesCatalogService = Nuform.Core.Services.CatalogService;
 
 // alias definitions restored for backwards compatibility
 using VmEstimateState = Nuform.App.ViewModels.EstimateState;
