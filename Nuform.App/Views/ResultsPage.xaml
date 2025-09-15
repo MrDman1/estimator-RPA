@@ -126,6 +126,10 @@
           </DataGridTextColumn>
           -->
 
+                    <DataGridTextColumn Header="Total"
+                              Binding="{Binding FinalQty, StringFormat={}{0:N2}}"
+                              IsReadOnly="True"
+                              Width="Auto" />
           <DataGridTextColumn Header="Unit"
                               Binding="{Binding Unit}"
                               Width="Auto" />
