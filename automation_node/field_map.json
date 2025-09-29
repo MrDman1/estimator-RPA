@@ -1,0 +1,22 @@
+{
+  "description": "Mapping between Maximizer and NSD fields used by the automation.",
+  "maximizer_to_nsd": {
+    "Objective": "Description",
+    "Contact": "Customer Contact",
+    "Sales Person": "Sales Person",
+    "Estimator": "Estimator",
+    "Opportunity Source": "Sales Person (informational)",
+    "Estimate #": "Estimate #",
+    "Currency": "Currency",
+    "Ship To": "Ship To",
+    "Ship To - City": "City",
+    "Ship To - State or Province": "State/Province"
+  },
+  "nsd_material_codes": {
+    "RELINE": "RL",
+    "RENU": "RN",
+    "CONFORM": "CF",
+    "Specialty": "SP",
+    "Other (non-PVC)": "OT"
+  }
+}
