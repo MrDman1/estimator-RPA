@@ -1,0 +1,388 @@
+*** Begin Patch
+*** Add File: estimator-RPA-main/estimator-RPA-main/automation_node/README.md
++# Nuform Automation Node Scripts
++
++This folder contains a set of Node/TypeScript scripts used to automate interactions with external web applications such as Maximizer CRM, NSD, and Trello. The scripts rely on the Playwright library to drive a headless or headed Chromium browser in order to perform complex multi‑step workflows on the user's behalf.
++
++## `create_estimate.js`
++
++The `create_estimate.js` script implements the high level flow described by our estimators:
++
++1. Launch a headed browser and allow the user to log in to Maximizer and NSD. Session cookies are saved so subsequent runs skip the login page.
++2. Search for an existing company in Maximizer using the Address Book search bar. If found, open the company and click the **Opportunities** tab.
++3. Create a new opportunity (estimate) by clicking the *Add* icon. Populate fields such as **Objective**, **Contact**, **Products/Services**, **Categories**, **Sales Person**, **Estimator**, **Opportunity Source**, **Estimate Number**, **Currency**, **Ship To** address, and applicable discounts.
++4. In NSD, navigate to the **Bill of Materials (BOMs)** page and click **+ NEW BOM**. Select the same customer, contact, sales person, and estimator. Copy the description and estimate number from the Maximizer opportunity. Fill in discounts and material type. Submit the BOM and capture the generated BOM number.
++5. Return to Maximizer and update the opportunity with the new BOM number.
++6. Optionally create a Trello card if the user has enabled Trello integration.
++7. Download the System Estimate from NSD by opening the **System Estimates** tab and clicking the **System Estimate** action for the new BOM. Save the PDF to a folder named after the estimate number on the user's desktop.
++
++The script accepts a single JSON argument which contains all fields collected from the user interface. See the comments in `create_estimate.js` for details on the supported fields.
++
++> **Note:** The automation scripts have been designed to be run on the user's own machine. They depend on the user's local installation of Node.js and Playwright, as well as the ability to access `http://crm.nuformdirect.com/MaximizerWebAccess` and `http://nsd.nuformdirect.com` via an unsecured connection.
++
+*** End Patch
+*** Add File: estimator-RPA-main/estimator-RPA-main/automation_node/create_estimate.js
++/**
++ * Nuform automation script for creating a new estimate across Maximizer, NSD, and Trello. This script uses Playwright to drive a headed Chromium instance. When run it will prompt the user to log in to each external system (Maximizer and NSD) if no saved session exists. Once authenticated the script proceeds to create an opportunity in Maximizer, a BOM in NSD, update the opportunity with the BOM number, and optionally generate a Trello card and download the system estimate.
++ *
++ * Usage:
++ *   node create_estimate.js '{ "companyName": "...", "contactName": "...", ... }'
++ *
++ * Required fields in the job object:
++ *   companyName       – Name of the customer/company in Maximizer and NSD.
++ *   contactName       – Contact name associated with the company.
++ *   objective         – Title of the opportunity (used as description in NSD).
++ *   estimateNumber    – Unique estimate number provided by the user.
++ *   salesPerson       – Name of the sales person (must exist in dropdowns).
++ *   estimator         – Name of the estimator (must exist in dropdowns).
++ *   opportunitySource – One of Maximizer's permanent fields (e.g. "Sales Agent").
++ *   currency          – Either "CAD" or "USD".
++ *   products          – Array of product identifiers (e.g. ["CF4", "CF6"]).
++ *   categories        – Array of category identifiers.
++ *   discounts         – Object mapping material type to discount percentage.
++ *   shipTo            – Either "Pickup" or an object with address fields.
++ *   trelloEnabled     – Optional boolean to create a Trello card.
++ *   sofPath           – Optional path to a Signed Order Form PDF to upload.
++ *
++ * The script will save session state to the `.data` directory so subsequent runs can skip the login screens. If you ever need to re‑authenticate simply delete the files in `.data`.
++ */
++
++const fs = require('fs');
++const path = require('path');
++const { chromium } = require('playwright');
++
++async function ensureDir(dir) {
++  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
++}
++
++async function run(job) {
++  const dataDir = path.join(__dirname, '.data');
++  await ensureDir(dataDir);
++  const maxState = path.join(dataDir, 'maximizer.json');
++  const nsdState = path.join(dataDir, 'nsd.json');
++
++  const browser = await chromium.launch({ headless: false });
++
++  async function newContext(statePath) {
++    let opts = { viewport: { width: 1280, height: 900 } };
++    if (fs.existsSync(statePath)) {
++      opts.storageState = statePath;
++    }
++    return await browser.newContext({ ...opts, acceptDownloads: true });
++  }
++
++  async function loginMaximizer(page) {
++    await page.goto('http://crm.nuformdirect.com/MaximizerWebAccess/Default.aspx');
++    await page.waitForSelector('input[type="text"]', { timeout: 60000 });
++    console.log('Please log in to Maximizer, then press Enter.');
++    await new Promise(resolve => process.stdin.once('data', resolve));
++    await page.context().storageState({ path: maxState });
++  }
++
++  async function loginNSD(page) {
++    await page.goto('http://nsd.nuformdirect.com/login');
++    await page.waitForSelector('input[type="password"]', { timeout: 60000 });
++    console.log('Please log in to NSD, then press Enter.');
++    await new Promise(resolve => process.stdin.once('data', resolve));
++    await page.context().storageState({ path: nsdState });
++  }
++
++  async function openCompany(page, companyName) {
++    await page.goto('http://crm.nuformdirect.com/MaximizerWebAccess/Address%20Book');
++    await page.waitForSelector('input[placeholder*=Search]', { timeout: 30000 });
++    const searchBox = await page.locator('input[placeholder*=Search]');
++    await searchBox.fill(companyName);
++    await searchBox.press('Enter');
++    await page.waitForSelector(`tr:has(td:text-matches("${companyName}", "i"))`, { timeout: 30000 });
++    await page.click(`tr:has(td:text-matches("${companyName}", "i"))`);
++    await page.waitForSelector('button[title="Opportunities"]', { timeout: 20000 });
++    await page.click('button[title="Opportunities"]');
++  }
++
++  async function createOpportunity(page, job) {
++    await page.waitForSelector('button[title="Add"]', { timeout: 20000 });
++    await page.click('button[title="Add"]');
++    await page.waitForSelector('input[name="Objective"]', { timeout: 20000 });
++    await page.fill('input[name="Objective"]', job.objective);
++    if (job.description) {
++      await page.fill('textarea[name="Description"]', job.description);
++    }
++    await page.click('input[name="Contact"]');
++    await page.fill('input[name="Contact"]', job.contactName);
++    await page.keyboard.press('Enter');
++    for (const prod of job.products || []) {
++      await page.click('div[role="combobox"]:has(label:text-matches("Products", "i"))');
++      await page.fill('div[role="combobox"] input', prod);
++      await page.keyboard.press('Enter');
++    }
++    for (const cat of job.categories || []) {
++      await page.click('div[role="combobox"]:has(label:text-matches("Categories", "i"))');
++      await page.fill('div[role="combobox"] input', cat);
++      await page.keyboard.press('Enter');
++    }
++    await page.selectOption('select[name="Sales Person"]', { label: job.salesPerson });
++    await page.selectOption('select[name="Estimator"]', { label: job.estimator });
++    await page.selectOption('select[name="Opportunity Source"]', { label: job.opportunitySource });
++    await page.fill('input[name="Estimate #"]', job.estimateNumber);
++    await page.selectOption('select[name="Currency"]', { label: job.currency });
++    if (job.shipTo === 'Pickup') {
++      await page.selectOption('select[name="Ship To"]', { label: 'Pickup' });
++    }
++    for (const [material, pct] of Object.entries(job.discounts || {})) {
++      const fieldSel = `input[name^="${material}"]`;
++      if (await page.$(fieldSel)) {
++        await page.fill(fieldSel, String(pct));
++      }
++    }
++    await page.click('button:has-text("SAVE")');
++    await page.waitForTimeout(5000);
++  }
++
++  async function createBOM(page, job) {
++    await page.goto('http://nsd.nuformdirect.com/bom-search');
++    await page.waitForSelector('button:has-text("+ NEW BOM")', { timeout: 20000 });
++    await page.click('button:has-text("+ NEW BOM")');
++    await page.waitForSelector('div[role="dialog"]', { timeout: 20000 });
++    await page.click('div[role="dialog"] label:has-text("Customer*") + div [role="button"]');
++    await page.fill('div.v-select-list input', job.companyName);
++    await page.keyboard.press('Enter');
++    await page.click('div[role="dialog"] label:has-text("Customer Contact*") + div [role="button"]');
++    await page.fill('div.v-select-list input', job.contactName);
++    await page.keyboard.press('Enter');
++    await page.click('div[role="dialog"] label:has-text("Sales Person*") + div [role="button"]');
++    await page.fill('div.v-select-list input', job.salesPerson);
++    await page.keyboard.press('Enter');
++    await page.click('div[role="dialog"] label:has-text("Estimator*") + div [role="button"]');
++    await page.fill('div.v-select-list input', job.estimator);
++    await page.keyboard.press('Enter');
++    await page.fill('div[role="dialog"] label:has-text("Description*") + div textarea', job.objective);
++    await page.fill('div[role="dialog"] label:has-text("Estimate #") + div input', job.estimateNumber);
++    await page.click('div[role="dialog"] label:has-text("Material Type*") + div .v-icon');
++    await page.waitForSelector('div[role="dialog"] .v-list', { timeout: 10000 });
++    const materials = job.materialTypes || job.products || [];
++    for (const m of materials) {
++      const label = {
++        CF2: 'CF2', CF4: 'CF4', CF6: 'CF6', CF8: 'CF8', CF8i: 'CF8i',
++        Reline: 'Reline', Renu: 'Renu', Specialty: 'Specialty', 'Non-PVC': 'Non-PVC', Other: 'Other'
++      }[m] || m;
++      await page.click(`div[role="dialog"] .v-list-item:has-text("${label}") .v-input--selection-controls__ripple`);
++    }
++    await page.click('div[role="dialog"] button:has-text("SUBMIT")');
++    await page.waitForSelector('div.v-snackbar', { timeout: 30000 });
++    const toast = await page.textContent('div.v-snackbar');
++    const bomMatch = toast && toast.match(/(\d{5}\d+-[A-Z0-9]{2})/);
++    return bomMatch ? bomMatch[1] : null;
++  }
++
++  async function addBomToOpportunity(page, bomNumber) {
++    await page.fill('input[name="BOM Number"]', bomNumber);
++    await page.click('button:has-text("SAVE")');
++    await page.waitForTimeout(3000);
++  }
++
++  const maxContext = await newContext(maxState);
++  const maxPage = await maxContext.newPage();
++  if (!fs.existsSync(maxState)) {
++    await loginMaximizer(maxPage);
++  }
++  await openCompany(maxPage, job.companyName);
++  await createOpportunity(maxPage, job);
++  await maxContext.storageState({ path: maxState });
++
++  const nsdContext = await newContext(nsdState);
++  const nsdPage = await nsdContext.newPage();
++  if (!fs.existsSync(nsdState)) {
++    await loginNSD(nsdPage);
++  }
++  const bomNumber = await createBOM(nsdPage, job);
++  if (bomNumber) {
++    console.log('BOM created:', bomNumber);
++  }
++  await addBomToOpportunity(maxPage, bomNumber);
++  await nsdContext.storageState({ path: nsdState });
++  await maxContext.storageState({ path: maxState });
++  await browser.close();
++}
++
++if (require.main === module) {
++  if (process.argv.length < 3) {
++    console.error('Usage: node create_estimate.js <job-json>');
++    process.exit(1);
++  }
++  const job = JSON.parse(process.argv[2]);
++  run(job).catch(err => {
++    console.error(err);
++    process.exit(1);
++  });
++}
++
+*** End Patch
+*** Add File: estimator-RPA-main/estimator-RPA-main/automation_node/field_map.json
++{
++  "description": "Mapping between Maximizer field labels and NSD field labels. Used by the automation script to copy data across systems.",
++  "maximizer_to_nsd": {
++    "Objective": "Description",
++    "Contact": "Customer Contact",
++    "Sales Person": "Sales Person",
++    "Estimator": "Estimator",
++    "Opportunity Source": "Sales Person",
++    "Estimate #": "Estimate #",
++    "Currency": "Currency",
++    "Discount CONFORM": "Conform Discount (%)",
++    "Discount RELINE": "Reline Panel Discount (%)",
++    "Discount RENU": "Renu Panel Discount (%)",
++    "Ship To": "Customer"
++  },
++  "comments": "Add additional mappings here as the two systems evolve."
++}
++
+*** End Patch
+*** Update File: estimator-RPA-main/estimator-RPA-main/Nuform.App/Pages/AgentPage.xaml
+@@
+-        <Button Content="Automate data entry with file input"
+-                Click="FileInput_Click" Margin="0,0,0,5" Width="300" Height="30"/>
+-        <Button Content="Automate data entry using calculator"
+-                Click="CalcAutomation_Click" Margin="0,0,0,5" Width="300" Height="30"/>
+-        <Button Content="RELINE calculator"
+-                Click="Calculator_Click" Margin="0,0,0,5" Width="300" Height="30"/>
++        <!-- Primary automation entry points -->
++        <Button Content="Data entry with SOF"
++                Click="DataEntryWithSof_Click"
++                Margin="0,0,0,5" Width="300" Height="30"/>
++        <Button Content="SOF generator and data entry"
++                Click="SofGeneratorDataEntry_Click"
++                Margin="0,0,0,5" Width="300" Height="30"/>
++        <Button Content="Estimate generation"
++                Click="EstimateGeneration_Click"
++                Margin="0,0,0,5" Width="300" Height="30"/>
++        <!-- Keep the existing calculator for standalone panel calculations -->
++        <Button Content="RELINE calculator"
++                Click="Calculator_Click" Margin="0,0,0,5" Width="300" Height="30"/>
+*** End Patch
+*** Update File: estimator-RPA-main/estimator-RPA-main/Nuform.App/Pages/AgentPage.xaml.cs
+@@
+-        // Placeholder for file input automation.  In a future iteration this
+-        // will navigate to a page that accepts a document (.doc, .sof, etc.)
+-        // and orchestrates the data entry across supported applications.  For now
+-        // it simply displays a message to the user.
+-        private void FileInput_Click(object sender, RoutedEventArgs e)
+-        {
+-            MessageBox.Show("File input automation is not yet implemented. This option will allow you to upload a document or .SOF file and automatically perform data entry across supported applications.", 
+-                "Coming soon", MessageBoxButton.OK, MessageBoxImage.Information);
+-        }
+-
+-        // Placeholder for calculator‑driven automation.  Future versions will
+-        // read data from the existing view models and push the results into
+-        // external systems automatically.  For now it simply informs the user
+-        // that the feature is under development.
+-        private void CalcAutomation_Click(object sender, RoutedEventArgs e)
+-        {
+-            MessageBox.Show("Calculator automation is not yet implemented. This option will run the Nuform calculations and push the resulting BOM into external systems automatically.", 
+-                "Coming soon", MessageBoxButton.OK, MessageBoxImage.Information);
+-        }
++        // Replaced placeholder handlers with new automation handlers.
+@@
+         private void Calculator_Click(object sender, RoutedEventArgs e)
+         {
+             var window = Application.Current.MainWindow as MainWindow;
+             if (window != null)
+             {
+                 window.MainFrame.Navigate(new IntakePage());
+             }
+         }
++
++        /// <summary>
++        /// Handler for the "Data entry with SOF" option.
++        /// </summary>
++        private void DataEntryWithSof_Click(object sender, RoutedEventArgs e)
++        {
++            MessageBox.Show(
++                "Data entry with SOF is not yet implemented. This option will allow you to upload a Signed Order Form and automatically perform data entry across Maximizer and NSD.",
++                "Coming soon",
++                MessageBoxButton.OK,
++                MessageBoxImage.Information);
++        }
++
++        /// <summary>
++        /// Handler for the "SOF generator and data entry" option.
++        /// </summary>
++        private void SofGeneratorDataEntry_Click(object sender, RoutedEventArgs e)
++        {
++            MessageBox.Show(
++                "SOF generator and data entry is not yet implemented. This option will run the panel calculator, generate an SOF, and automate data entry into Maximizer and NSD.",
++                "Coming soon",
++                MessageBoxButton.OK,
++                MessageBoxImage.Information);
++        }
++
++        /// <summary>
++        /// Handler for the "Estimate generation" option. Demonstrates how to invoke
++        /// the Node automation script with a sample payload.
++        /// </summary>
++        private void EstimateGeneration_Click(object sender, RoutedEventArgs e)
++        {
++            try
++            {
++                var job = new
++                {
++                    companyName = "Example Company",
++                    contactName = "John Doe",
++                    objective = "Test Estimate",
++                    estimateNumber = "12345",
++                    salesPerson = "Wayne Smith",
++                    estimator = "Wayne Smith",
++                    opportunitySource = "Sales Agent",
++                    currency = "CAD",
++                    products = new[] { "CF4", "CF6" },
++                    categories = new[] { "Commercial" },
++                    discounts = new System.Collections.Generic.Dictionary<string, double> { { "reline", 10.0 }, { "renu", 0.0 } },
++                    shipTo = "Pickup",
++                    trelloEnabled = false
++                };
++                string jobJson = System.Text.Json.JsonSerializer.Serialize(job);
++                string appDir = System.AppDomain.CurrentDomain.BaseDirectory;
++                string scriptPath = System.IO.Path.Combine(appDir, "..", "..", "automation_node", "create_estimate.js");
++                scriptPath = System.IO.Path.GetFullPath(scriptPath);
++                if (!System.IO.File.Exists(scriptPath))
++                {
++                    MessageBox.Show(
++                        $"Cannot find automation script at {scriptPath}. Please ensure that the automation_node folder is deployed with the application.",
++                        "Automation script missing",
++                        MessageBoxButton.OK,
++                        MessageBoxImage.Error);
++                    return;
++                }
++                var psi = new System.Diagnostics.ProcessStartInfo
++                {
++                    FileName = "node",
++                    Arguments = $"{scriptPath} \"{jobJson.Replace("\"", "\\\"")}\"",
++                    UseShellExecute = false,
++                    RedirectStandardOutput = true,
++                    RedirectStandardError = true,
++                    CreateNoWindow = true,
++                    WorkingDirectory = System.IO.Path.GetDirectoryName(scriptPath)
++                };
++                var process = new System.Diagnostics.Process { StartInfo = psi };
++                process.Start();
++                process.WaitForExit();
++                string output = process.StandardOutput.ReadToEnd();
++                string error = process.StandardError.ReadToEnd();
++                if (!string.IsNullOrEmpty(output))
++                {
++                    MessageBox.Show(output, "Automation Output", MessageBoxButton.OK, MessageBoxImage.Information);
++                }
++                if (!string.IsNullOrEmpty(error))
++                {
++                    MessageBox.Show(error, "Automation Error", MessageBoxButton.OK, MessageBoxImage.Error);
++                }
++            }
++            catch (System.Exception ex)
++            {
++                MessageBox.Show(
++                    $"Failed to run automation: {ex.Message}",
++                    "Error",
++                    MessageBoxButton.OK,
++                    MessageBoxImage.Error);
++            }
++        }
+*** End Patch
