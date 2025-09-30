@@ -8,5 +8,24 @@
   },
   "devDependencies": {
     "typescript": "^5.9.2"
+  },
+  "description": "<!--\r   NOTE FOR DEVELOPERS:\r   This repository has been cleaned up and consolidated into a single, self‑contained\r   project.  Historical patch files and temporary README fragments have been removed,\r   and all documented fixes have been incorporated directly into the source code.\r   See the \"Developer Notes\" section near the bottom of this file for guidance on\r   extending or modifying the application.\r -->",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrDman1/estimator-RPA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MrDman1/estimator-RPA/issues"
+  },
+  "homepage": "https://github.com/MrDman1/estimator-RPA#readme",
+  "dependencies": {
+    "playwright": "^1.55.1"
   }
 }
