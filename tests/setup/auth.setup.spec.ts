@@ -23,10 +23,12 @@ test('Maximizer auth', async ({ page }) => {
   ensureDir();
 
   await page.goto(base);
-  // TODO: Replace selectors below with the real login form fields.
-  await page.getByLabel(/user(name)?/i).fill(user);
-  await page.getByLabel(/pass(word)?/i).fill(pass);
-  await page.getByRole('button', { name: /log.?in/i }).click();
+  await page.goto('http://nsd.nuformdirect.com/login');
+  await page.getByRole('textbox', { name: 'Login' }).click();
+  await page.getByRole('textbox', { name: 'Login' }).fill('dbeland');
+  await page.getByRole('textbox', { name: 'Password' }).click();
+  await page.getByRole('textbox', { name: 'Password' }).fill('danwik-jodtYd-nopji6');
+  await page.getByRole('button', { name: 'Log In' }).click();
 
   // TODO: Replace with a reliable post-login assertion (e.g., a user menu appears)
   await expect(page).toHaveTitle(/Maximizer/i);
@@ -42,13 +44,14 @@ test('NSD auth', async ({ page }) => {
   ensureDir();
 
   await page.goto(base);
-  // TODO: Replace selectors below with the real login form fields.
-  await page.getByLabel(/email|user(name)?/i).fill(user);
-  await page.getByLabel(/pass(word)?/i).fill(pass);
-  await page.getByRole('button', { name: /log.?in|sign.?in/i }).click();
+  await page.goto('http://nsd.nuformdirect.com/login');
+  await page.getByRole('textbox', { name: 'Login' }).click();
+  await page.getByRole('textbox', { name: 'Login' }).fill('dbeland');
+  await page.getByRole('textbox', { name: 'Password' }).click();
+  await page.getByRole('textbox', { name: 'Password' }).fill('danwik-jodtYd-nopji6');
+  await page.getByRole('button', { name: 'Log In' }).click();
 
-  // TODO: Replace with a reliable post-login assertion
-  await expect(page).toHaveURL(/dashboard|home/i);
-
+  await page.waitForURL(/bom-search|dashboard|home|estimate/i, { timeout: 20000 });
   await page.context().storageState({ path: path.join(storageDir, 'nsd.json') });
+
 });
