@@ -3,3 +3,12 @@ obj/
 *.deps.json
 dist/
 node_modules/
+.vs/
+venv/
+runs/
+storageState/
+*.sof
+*.pdf
+tests-results/
+playwright-report/
+blob-report/

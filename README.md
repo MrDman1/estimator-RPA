@@ -331,3 +331,82 @@ Fill \& Print Excel (optional).
 
 Open Folder to verify files.
 
+
+## Playwright quickstart
+
+```bash
+# install deps
+npm i
+
+# install browsers (first time only)
+npm run install:pw
+
+# run unit tests (domain calc)
+npm test
+
+# run e2e smoke in headless and headed modes
+npm run e2e
+npm run e2e:headed
+```
+
+## Auth & Download automation (Playwright)
+
+### 0) Set environment variables
+Create a `.env` file or set variables in your shell with your real credentials/URLs:
+
+```
+MAX_BASE_URL=http://crm.nuformdirect.com/MaximizerWebAccess/Default.aspx
+MAX_USER=your_max_user
+MAX_PASS=your_max_pass
+
+NSD_BASE_URL=https://your-nsd.example.com/login
+NSD_USER=your_nsd_user
+NSD_PASS=your_nsd_pass
+
+# Optional:
+RUNS_DIR=runs
+```
+
+> **Windows Command Prompt (cmd.exe)** examples:
+```
+set MAX_BASE_URL=http://crm.nuformdirect.com/MaximizerWebAccess/Default.aspx
+set MAX_USER=you@example.com
+set MAX_PASS=secret
+set NSD_BASE_URL=https://your-nsd.example.com/login
+set NSD_USER=you@example.com
+set NSD_PASS=secret
+```
+
+> **PowerShell** examples:
+```
+$env:MAX_BASE_URL="http://crm.nuformdirect.com/MaximizerWebAccess/Default.aspx"
+$env:MAX_USER="you@example.com"
+$env:MAX_PASS="secret"
+$env:NSD_BASE_URL="https://your-nsd.example.com/login"
+$env:NSD_USER="you@example.com"
+$env:NSD_PASS="secret"
+```
+
+### 1) Generate storage state (login once)
+```
+npm run e2e:auth:max   # saves storageState/maximizer.json
+npm run e2e:auth:nsd   # saves storageState/nsd.json
+```
+
+> If a command is *skipped*, check that the related env vars are set.  
+> You may need to update the selectors inside `tests/setup/auth.setup.spec.ts` to match the real login form.
+
+### 2) Download the System Estimate PDF
+```
+npm run e2e:download
+```
+This uses the saved NSD storage state and will place the file under `runs/<timestamp>/`.
+
+### Notes on Windows shells
+- **cmd.exe** uses `set VAR=value` to set env vars for the current session.
+- **PowerShell** uses `$env:VAR="value"`.
+- To set an env var *inline* for one command in **PowerShell**:
+  ```powershell
+  $env:NSD_BASE_URL="https://..." ; npm run e2e:download
+  ```
+- To make variables persistent, add them to a `.env` and use a loader like `dotenv-cli` (optional) or set them in System Properties → Environment Variables.
